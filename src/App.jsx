@@ -14,6 +14,9 @@ import LoadingSpinner from './components/LoadingSpinner';
 // Pages
 import AuthScreen from './pages/AuthScreen';
 import AdminDashboard from './pages/AdminDashboard';
+import GateControl from './pages/GateControl';
+import GuestListPortal from './pages/GuestListPortal';
+import EventAnalytics from './pages/EventAnalytics';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -89,10 +92,18 @@ export default function App() {
               ) : <Navigate to="/login" replace />
             } 
           />
-          {/* Placeholder routes for Task 5 */}
-          <Route path="/event/:id/gate" element={user && isAdmin ? <div className="p-10 text-white font-black italic uppercase">Gate Control Loading...</div> : <Navigate to="/login" replace />} />
-          <Route path="/event/:id/guests" element={user && isAdmin ? <div className="p-10 text-white font-black italic uppercase">Guest List Loading...</div> : <Navigate to="/login" replace />} />
-          <Route path="/event/:id/analytics" element={user && isAdmin ? <div className="p-10 text-white font-black italic uppercase">Analytics Loading...</div> : <Navigate to="/login" replace />} />
+          <Route 
+            path="/event/:id/gate" 
+            element={user && isAdmin ? <GateControl /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/event/:id/guests" 
+            element={user && isAdmin ? <GuestListPortal /> : <Navigate to="/login" replace />} 
+          />
+          <Route 
+            path="/event/:id/analytics" 
+            element={user && isAdmin ? <EventAnalytics /> : <Navigate to="/login" replace />} 
+          />
         </Routes>
       </div>
     </BrowserRouter>

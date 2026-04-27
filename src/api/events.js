@@ -7,3 +7,7 @@ export const fetchEvents = async () => {
 export const createEvent = async (eventData) => {
   return supabase.from('events').insert([eventData]);
 };
+
+export const fetchEventById = async (id) => {
+  return supabase.from('events').select('*').eq('id', id).single();
+};

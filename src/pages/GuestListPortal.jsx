@@ -16,6 +16,13 @@ const GuestListPortal = () => {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', sid: '', img: '' });
 
+  const fetchAttendees = async () => {
+    setLoading(true);
+    const { data } = await fetchEventAttendees(eventId);
+    setAttendees(data || []);
+    setLoading(false);
+  };
+
   useEffect(() => {
     const loadData = async () => {
       const { data: eventData, error: eError } = await fetchEventById(eventId);
@@ -28,13 +35,6 @@ const GuestListPortal = () => {
     };
     loadData();
   }, [eventId, navigate]);
-
-  const fetchAttendees = async () => {
-    setLoading(true);
-    const { data } = await fetchEventAttendees(eventId);
-    setAttendees(data || []);
-    setLoading(false);
-  };
 
   const handleManualAdd = async (e) => {
     e.preventDefault();

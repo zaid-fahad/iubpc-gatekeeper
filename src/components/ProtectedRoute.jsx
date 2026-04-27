@@ -1,12 +1,18 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { ShieldAlert } from 'lucide-react';
 import { signOut } from '../api/auth';
 
 export const ProtectedRoute = ({ children, user, isAdmin, loading }) => {
+  const location = useLocation();
+
   if (loading) return <LoadingSpinner />;
-  if (!user) return <Navigate to="/login" replace />;
+  
+  if (!user) {
+    // Save the current location to redirect back after login
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
   
   if (!isAdmin) {
     return (

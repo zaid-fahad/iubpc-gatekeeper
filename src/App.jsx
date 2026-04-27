@@ -30,37 +30,10 @@ import {
   Download, BarChart3, PieChart, Info, ChevronDown
 } from 'lucide-react';
 
-// --- Shared UI Components ---
-
-const LoadingSpinner = () => (
-  <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-6 text-center p-6 italic animate-in fade-in">
-    <div className="relative w-20 h-20">
-        <div className="absolute inset-0 rounded-full border-b-2 border-green-500 animate-spin"></div>
-        <div className="absolute inset-2 rounded-full border-t-2 border-purple-500 animate-spin-slow"></div>
-        <Zap className="absolute inset-0 m-auto text-green-500 animate-pulse" size={28} />
-    </div>
-    <div className="space-y-1">
-        <p className="text-slate-400 font-black text-xs uppercase tracking-[0.5em]">Synchronizing</p>
-        <p className="text-slate-800 text-[8px] uppercase tracking-widest font-black">Secure Terminal v4.0</p>
-    </div>
-  </div>
-);
-
-const GateActBtn = ({ label, active, onClick, icon, color }) => (
-  <button 
-    onClick={onClick} 
-    className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-300 active:scale-[0.97] ${active ? 'border-transparent shadow-xl' : 'bg-slate-950/40 border-slate-800/80 text-slate-500'}`} 
-    style={active ? { backgroundColor: color, color: '#000' } : {}}
-  >
-    <div className="flex items-center gap-4">
-      <div className={`p-2 rounded-xl ${active ? 'bg-black/10' : 'bg-slate-800'}`}>{icon}</div>
-      <span className="font-black text-sm tracking-tight uppercase italic">{label}</span>
-    </div>
-    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${active ? 'border-black/20 bg-black/10' : 'border-slate-800'}`}>
-        {active && <CheckCircle2 size={16}/>}
-    </div>
-  </button>
-);
+// Components
+import LoadingSpinner from './components/LoadingSpinner';
+import GateActBtn from './components/GateActBtn';
+import StatCard from './components/StatCard';
 
 // --- Auth Component ---
 
@@ -278,14 +251,6 @@ const EventAnalytics = ({ event, onBack }) => {
     );
   };
   
-const StatCard = ({ label, value, color, char }) => (
-    <div className={`${color} border border-slate-800 p-10 rounded-[3.5rem] shadow-xl relative overflow-hidden group hover:border-slate-600 transition-all`}>
-        <p className="text-6xl font-black text-white italic relative z-10 leading-none tracking-tighter">{value}</p>
-        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mt-4 relative z-10 italic">{label}</p>
-        <div className="absolute -bottom-6 -right-6 text-white/5 text-[10rem] font-black italic leading-none pointer-events-none">{char}</div>
-    </div>
-);
-
 const GuestListPortal = ({ event, onBack }) => {
   const [attendees, setAttendees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");

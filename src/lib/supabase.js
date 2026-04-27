@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 // --- Supabase Configuration ---
 /**
  * Safely accessing environment variables.
@@ -16,3 +18,5 @@ const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const IUB_DOMAIN = "@iub.edu.bd";
+
+export { supabase, IUB_DOMAIN };

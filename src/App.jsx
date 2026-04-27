@@ -1,5 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { 
+  signUpAdmin, 
+  signInAdmin, 
+  signOut, 
+  getSession, 
+  checkAdminStatus, 
+  onAuthStateChange 
+} from './api/auth';
+import { 
+  fetchEvents as fetchEventsApi, 
+  createEvent 
+} from './api/events';
+import { 
+  fetchEventAttendees, 
+  searchAttendee, 
+  updateAttendeeStatus, 
+  insertAttendee, 
+  bulkInsertAttendees 
+} from './api/attendees';
 import Papa from 'papaparse';
 import { 
   Search, QrCode, CheckCircle2, Ticket, UserCheck, 
@@ -11,19 +29,6 @@ import {
   UserPlus, ShieldAlert, Lock, Upload, Image as ImageIcon,
   Download, BarChart3, PieChart, Info, ChevronDown
 } from 'lucide-react';
-
-// --- Supabase Configuration ---
-const getEnv = (key) => {
-  try {
-    return (import.meta).env[key] || "";
-  } catch {
-    return "";
-  }
-};
-
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY');
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- Shared UI Components ---
 
@@ -72,12 +77,12 @@ const AuthScreen = () => {
     setError('');
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await signUpAdmin(email, password);
         if (error) throw error;
         alert("Account created! Log in once you've been added to the 'admins' table.");
         setIsSignUp(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await signInAdmin(email, password);
         if (error) throw error;
       }
     } catch (err) {
@@ -135,12 +140,7 @@ const GateControl = ({ event, onBack }) => {
     const q = (query || searchInput).trim();
     if (!q) return;
 
-    const { data: attendee, error: aError } = await supabase
-        .from('attendees')
-        .select('*')
-        .eq('event_id', event.id)
-        .or(`student_id.eq.${q},email.eq.${q}`)
-        .maybeSingle();
+    const { data: attendee, error: aError } = await searchAttendee(event.id, q);
 
     if (aError || !attendee) { 
         setError("Identity not recognized."); 
@@ -156,7 +156,7 @@ const GateControl = ({ event, onBack }) => {
   const updateStatus = async (field) => {
     if (!member) return;
     const isActivating = !member[field];
-    const { error } = await supabase.from('attendees').update({ [field]: isActivating }).eq('id', member.id);
+    const { error } = await updateAttendeeStatus(member.id, field, isActivating);
     if (!error) {
         setMember({ ...member, [field]: isActivating });
         setHistory(prev => [{ name: member.full_name, id: member.student_id, action: field, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 10));
@@ -255,7 +255,7 @@ const EventAnalytics = ({ event, onBack }) => {
     
     useEffect(() => {
       const fetchStats = async () => {
-        const { data } = await supabase.from('attendees').select('*').eq('event_id', event.id);
+        const { data } = await fetchEventAttendees(event.id);
         if (data) setStats({ total: data.length, c1: data.filter(r => r.checked_in_1).length, tokens: data.filter(r => r.token_given).length, c2: data.filter(r => r.checked_in_2).length });
         setLoading(false);
       };
@@ -295,7 +295,7 @@ const GuestListPortal = ({ event, onBack }) => {
 
   const fetchAttendees = async () => {
     setLoading(true);
-    const { data } = await supabase.from('attendees').select('*').eq('event_id', event.id).order('created_at', { ascending: false });
+    const { data } = await fetchEventAttendees(event.id);
     setAttendees(data || []);
     setLoading(false);
   };
@@ -304,7 +304,7 @@ const GuestListPortal = ({ event, onBack }) => {
 
   const handleManualAdd = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('attendees').insert({ event_id: event.id, full_name: form.name, email: form.email, student_id: form.sid, avatar_url: form.img || null });
+    const { error } = await insertAttendee({ event_id: event.id, full_name: form.name, email: form.email, student_id: form.sid, avatar_url: form.img || null });
     if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'' }); fetchAttendees(); }
     else alert(error.message);
   };
@@ -314,7 +314,7 @@ const GuestListPortal = ({ event, onBack }) => {
     if (!file) return;
     Papa.parse(file, { header: true, skipEmptyLines: true, complete: async (res) => {
       const data = res.data.filter(r => r.student_id).map(r => ({ event_id: event.id, full_name: r.name || 'Anonymous', email: r.email || '', student_id: r.student_id, avatar_url: r.image_link || null }));
-      const { error } = await supabase.from('attendees').insert(data);
+      const { error } = await bulkInsertAttendees(data);
       if (!error) fetchAttendees();
       else alert(error.message);
     }});
@@ -411,7 +411,7 @@ const AdminDashboard = ({ user }) => {
   const [newEvent, setNewEvent] = useState({ title: '', date: '' });
 
   const fetchEvents = async () => {
-    const { data } = await supabase.from('events').select('*').order('date', { ascending: false });
+    const { data } = await fetchEventsApi();
     setEvents(data || []);
   };
 
@@ -419,7 +419,7 @@ const AdminDashboard = ({ user }) => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    const { error } = await supabase.from('events').insert([newEvent]);
+    const { error } = await createEvent(newEvent);
     if (!error) { setShowEventModal(false); setNewEvent({ title: '', date: '' }); fetchEvents(); }
     else alert("Creation Failure: " + error.message);
   };
@@ -435,7 +435,7 @@ const AdminDashboard = ({ user }) => {
           <div className="w-14 h-14 bg-green-500 rounded-[1.8rem] flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(34,197,94,0.3)] italic"><ShieldCheck size={32}/></div>
           <div><h1 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none italic italic italic italic italic">IUBPC</h1><p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] mt-2 italic leading-none">Event Attendee Tracker</p></div>
         </div>
-        <button onClick={() => supabase.auth.signOut()} className="p-4 bg-slate-900 rounded-[1.5rem] border border-slate-800 text-red-500 hover:bg-red-500/10 transition-all active:scale-90 shadow-xl italic"><LogOut size={22}/></button>
+        <button onClick={() => signOut()} className="p-4 bg-slate-900 rounded-[1.5rem] border border-slate-800 text-red-500 hover:bg-red-500/10 transition-all active:scale-90 shadow-xl italic"><LogOut size={22}/></button>
       </header>
 
       <main className="p-6 space-y-12 italic">
@@ -497,13 +497,13 @@ export default function App() {
     const initialize = async () => {
         try {
             // Step 1: Immediate Session Check
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await getSession();
             if (session && isMounted) {
                 const email = session.user.email || "";
                 setUser(session.user);
                 
                 // Step 2: Immediate Admin Check
-                const { data: adminCheck } = await supabase.from('admins').select('email').eq('email', email).maybeSingle();
+                const { data: adminCheck } = await checkAdminStatus(email);
                 if (isMounted) setIsAdmin(!!adminCheck);
             }
         } catch (err) {
@@ -516,13 +516,13 @@ export default function App() {
     initialize();
 
     // Step 3: Global Auth Listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
       if (session) {
         setUser(session.user);
         const email = session.user.email || "";
-        const { data: adminCheck } = await supabase.from('admins').select('email').eq('email', email).maybeSingle();
+        const { data: adminCheck } = await checkAdminStatus(email);
         if (isMounted) {
           setIsAdmin(!!adminCheck);
           setLoading(false);
@@ -560,7 +560,7 @@ export default function App() {
             <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] leading-relaxed">Identity <b>{user.email}</b><br/>UNAUTHORIZED FOR ROOT ACCESS</p>
         </div>
         <button 
-          onClick={() => supabase.auth.signOut()} 
+          onClick={() => signOut()} 
           className="w-full py-5 bg-slate-950 text-slate-400 hover:text-white rounded-2xl font-black uppercase tracking-[0.3em] active:scale-95 transition-all text-[9px] italic border border-slate-800 shadow-xl"
         >
           RELINQUISH CONTROL

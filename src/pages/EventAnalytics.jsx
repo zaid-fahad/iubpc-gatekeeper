@@ -85,16 +85,23 @@ const EventAnalytics = () => {
     if (loading) return <LoadingSpinner />;
 
     return (
-      <div className="fixed inset-0 bg-slate-950 z-[120] flex flex-col overflow-y-auto animate-in slide-in-from-right duration-400 italic">
-        <header className="p-6 flex items-center gap-4 bg-slate-900 border-b border-slate-800 shadow-2xl shrink-0 sticky top-0 z-10">
-          <button onClick={() => navigate('/')} className="p-3 bg-slate-950 rounded-2xl border border-slate-800 active:scale-90 transition-colors"><ChevronLeft size={20}/></button>
-          <div>
-              <h2 className="text-xl font-black italic text-white uppercase truncate max-w-[200px] lg:max-w-md leading-none">{event.title}</h2>
-              <p className="text-[9px] font-black text-blue-400 tracking-[0.3em] uppercase italic mt-1">Impact Intelligence Dashboard</p>
+      <div className="space-y-8 animate-in fade-in duration-700 italic">
+        <header className="flex justify-between items-end italic">
+          <div className="flex items-center gap-4 italic">
+            <button 
+              onClick={() => navigate('/events')}
+              className="p-2.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-all active:scale-95 italic shadow-lg"
+            >
+              <ChevronLeft size={20}/>
+            </button>
+            <div>
+                <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event.title}</h2>
+                <p className="text-blue-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Impact Intelligence Dashboard</p>
+            </div>
           </div>
         </header>
 
-        <main className="p-6 max-w-6xl mx-auto w-full space-y-6 pb-24">
+        <main className="space-y-6 pb-24 italic">
             {/* TOP STATS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard label="Total Manifest" value={stats.total} color="bg-slate-900" char="T" />

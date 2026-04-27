@@ -9,20 +9,24 @@ import {
 // Components
 import LoadingSpinner from './components/LoadingSpinner';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import AppLayout from './components/AppLayout';
 
 // Pages
 import AuthScreen from './pages/AuthScreen';
-import AdminDashboard from './pages/AdminDashboard';
+import DashboardOverview from './pages/DashboardOverview';
+import EventRegistry from './pages/EventRegistry';
+import OperatorManifest from './pages/OperatorManifest';
 import GateControl from './pages/GateControl';
 import GuestListPortal from './pages/GuestListPortal';
 import EventAnalytics from './pages/EventAnalytics';
 
-const AppRoutes = ({ user, isAdmin, isVolunteer, loading }) => {
+const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
   const location = useLocation();
 
   if (loading) return <LoadingSpinner />;
 
-  const isAuthorized = isAdmin || isVolunteer;
+  const isAuthorized = (isAdmin || isVolunteer) && isActive;
+  const userRole = isAdmin ? 'admin' : 'volunteer';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans overflow-x-hidden selection:bg-green-500/30 selection:text-slate-950 italic">
@@ -34,25 +38,53 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, loading }) => {
             !user ? (
               <AuthScreen />
             ) : (
-              <Navigate to={location.state?.from?.pathname || "/"} replace />
+              <Navigate to={location.state?.from?.pathname || "/events"} replace />
             )
           } 
         />
 
-        {/* Protected Routes */}
+        {/* Protected Routes wrapped in AppLayout */}
         <Route 
           path="/" 
           element={
             <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <AdminDashboard userRole={isAdmin ? 'admin' : 'volunteer'} />
+              <AppLayout userRole={userRole}>
+                <DashboardOverview userRole={userRole} />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
+
+        <Route 
+          path="/events" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <EventRegistry userRole={userRole} />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/operators" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <OperatorManifest />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Event Specific Routes (can also be wrapped or kept standalone) */}
         <Route 
           path="/event/:id/gate" 
           element={
             <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <GateControl />
+              <AppLayout userRole={userRole}>
+                <GateControl />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
@@ -60,15 +92,19 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, loading }) => {
           path="/event/:id/guests" 
           element={
             <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <GuestListPortal />
+              <AppLayout userRole={userRole}>
+                <GuestListPortal />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
         <Route 
           path="/event/:id/analytics" 
           element={
-            <ProtectedRoute user={user} isAdmin={isAdmin} loading={loading}>
-              <EventAnalytics />
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <EventAnalytics />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
@@ -157,7 +193,13 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppRoutes user={user} isAdmin={userRole === 'admin' && isActive} isVolunteer={userRole === 'volunteer' && isActive} loading={loading} />
+      <AppRoutes 
+        user={user} 
+        isAdmin={userRole === 'admin'} 
+        isVolunteer={userRole === 'volunteer'} 
+        isActive={isActive}
+        loading={loading} 
+      />
     </BrowserRouter>
   );
 }

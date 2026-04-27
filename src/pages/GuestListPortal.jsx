@@ -80,30 +80,43 @@ const GuestListPortal = () => {
   if (!event && loading) return <LoadingSpinner />;
 
   return (
-    <div className="fixed inset-0 bg-slate-950 z-[110] flex flex-col overflow-hidden animate-in fade-in duration-300 italic">
-      <header className="p-6 flex items-center justify-between bg-slate-900 border-b border-slate-800 shrink-0 shadow-2xl">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="p-3 bg-slate-950 rounded-2xl border border-slate-800 active:scale-90 transition-all"><ChevronLeft size={20}/></button>
-          <div><h2 className="text-xl font-black italic text-white uppercase truncate max-w-[150px] lg:max-w-md leading-none italic">{event?.title}</h2><p className="text-[10px] font-black text-purple-400 tracking-[0.2em] uppercase mt-1 italic leading-none">Database Hub</p></div>
+    <div className="space-y-8 animate-in fade-in duration-700 italic">
+      <header className="flex justify-between items-end italic">
+        <div className="flex items-center gap-4 italic">
+          <button 
+            onClick={() => navigate('/events')}
+            className="p-2.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-all active:scale-95 italic shadow-lg"
+          >
+            <ChevronLeft size={20}/>
+          </button>
+          <div>
+            <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event?.title}</h2>
+            <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Database Hub</p>
+          </div>
         </div>
         <div className="flex gap-2">
-            <button onClick={() => setShowAdd(true)} className="p-3 bg-slate-800 text-green-400 rounded-2xl border border-slate-700 active:scale-90 shadow-lg transition-all"><UserPlus size={20}/></button>
-            <label className="p-3 bg-green-500 text-slate-950 rounded-2xl cursor-pointer hover:bg-green-400 transition-all active:scale-90 flex items-center justify-center border-b-2 border-green-700 shadow-xl">
-                <Upload size={20} /><input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
-            </label>
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Manual Add</button>
+          <label className="px-4 py-2.5 bg-green-500 text-slate-950 rounded-xl cursor-pointer hover:bg-green-400 transition-all active:scale-95 flex items-center justify-center border-b-4 border-green-700 shadow-xl font-black text-[9px] uppercase tracking-widest gap-2 italic">
+            <Upload size={16} /> Bulk Import <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
+          </label>
         </div>
       </header>
-      <div className="p-6 bg-slate-900/50 border-b border-slate-800 space-y-4 shrink-0 italic shadow-xl">
-        <div className="relative max-w-md mx-auto group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-green-500 transition-colors" size={18} />
-          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-4 pl-12 rounded-2xl text-sm font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search by name, ID or email..." />
-        </div>
-        <div className="flex justify-between items-center px-1 italic max-w-6xl mx-auto">
-            <button onClick={downloadTemplate} className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1.5 hover:text-white transition-colors italic leading-none"><Download size={12}/> Get Template</button>
-            <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest italic leading-none">{attendees.length} Units Logged</span>
+
+      <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl space-y-4 italic shadow-xl">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-center italic">
+          <div className="relative w-full md:max-w-xs group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-green-500 transition-colors" size={16} />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search manifest..." />
+          </div>
+          <div className="flex items-center gap-4 italic">
+            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-600 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={12}/> Get Template</button>
+            <div className="h-3 w-px bg-slate-800"></div>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Units Logged</span>
+          </div>
         </div>
       </div>
-      <main className="flex-1 overflow-y-auto p-6 bg-slate-950/20">
+
+      <main className="italic pb-20">
         {loading ? (
           <div className="py-20 flex justify-center opacity-10"><Clock className="animate-spin" size={40}/></div>
         ) : (

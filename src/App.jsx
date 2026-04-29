@@ -9,18 +9,24 @@ import {
 // Components
 import LoadingSpinner from './components/LoadingSpinner';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import AppLayout from './components/AppLayout';
 
 // Pages
 import AuthScreen from './pages/AuthScreen';
-import AdminDashboard from './pages/AdminDashboard';
+import DashboardOverview from './pages/DashboardOverview';
+import EventRegistry from './pages/EventRegistry';
+import OperatorManifest from './pages/OperatorManifest';
 import GateControl from './pages/GateControl';
 import GuestListPortal from './pages/GuestListPortal';
 import EventAnalytics from './pages/EventAnalytics';
 
-const AppRoutes = ({ user, isAdmin, loading }) => {
+const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
   const location = useLocation();
 
   if (loading) return <LoadingSpinner />;
+
+  const isAuthorized = (isAdmin || isVolunteer) && isActive;
+  const userRole = isAdmin ? 'admin' : 'volunteer';
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans overflow-x-hidden selection:bg-green-500/30 selection:text-slate-950 italic">
@@ -32,42 +38,73 @@ const AppRoutes = ({ user, isAdmin, loading }) => {
             !user ? (
               <AuthScreen />
             ) : (
-              // Redirect back to the page they were trying to access, or dashboard
-              <Navigate to={location.state?.from?.pathname || "/"} replace />
+              <Navigate to={location.state?.from?.pathname || "/events"} replace />
             )
           } 
         />
 
-        {/* Protected Routes */}
+        {/* Protected Routes wrapped in AppLayout */}
         <Route 
           path="/" 
           element={
-            <ProtectedRoute user={user} isAdmin={isAdmin} loading={loading}>
-              <AdminDashboard />
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <DashboardOverview userRole={userRole} />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
+
+        <Route 
+          path="/events" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <EventRegistry userRole={userRole} />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/operators" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <OperatorManifest />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Event Specific Routes (can also be wrapped or kept standalone) */}
         <Route 
           path="/event/:id/gate" 
           element={
-            <ProtectedRoute user={user} isAdmin={isAdmin} loading={loading}>
-              <GateControl />
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <GateControl />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
         <Route 
           path="/event/:id/guests" 
           element={
-            <ProtectedRoute user={user} isAdmin={isAdmin} loading={loading}>
-              <GuestListPortal />
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <GuestListPortal />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
         <Route 
           path="/event/:id/analytics" 
           element={
-            <ProtectedRoute user={user} isAdmin={isAdmin} loading={loading}>
-              <EventAnalytics />
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <EventAnalytics />
+              </AppLayout>
             </ProtectedRoute>
           } 
         />
@@ -81,22 +118,23 @@ const AppRoutes = ({ user, isAdmin, loading }) => {
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState(null); // 'admin' or 'volunteer'
+  const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Memoize the admin check to prevent unnecessary re-runs
-  const verifyAdmin = useCallback(async (email) => {
-    if (!email) return false;
+  const verifyUserRole = useCallback(async (email) => {
+    if (!email) return { role: null, active: false };
     try {
       const { data, error } = await checkAdminStatus(email);
       if (error) {
-        console.error("Admin verification error:", error);
-        return false;
+        console.error("User verification error:", error);
+        return { role: null, active: false };
       }
-      return !!data;
+      return { role: data?.role || null, active: data?.is_active || false };
     } catch (err) {
-      console.error("Critical Admin Check Fault:", err);
-      return false;
+      console.error("Critical User Check Fault:", err);
+      return { role: null, active: false };
     }
   }, []);
 
@@ -106,40 +144,38 @@ export default function App() {
 
     const initAuth = async () => {
       try {
-        // 1. Initial Session Check (Sync-like recovery from LocalStorage)
         const { data: { session } } = await getSession();
         
         if (session && isMounted) {
           setUser(session.user);
-          const adminStatus = await verifyAdmin(session.user.email);
+          const { role, active } = await verifyUserRole(session.user.email);
           if (isMounted) {
-            setIsAdmin(adminStatus);
+            setUserRole(role);
+            setIsActive(active);
           }
         }
       } catch (err) {
         console.error("Session recovery failed:", err);
       } finally {
-        // Only release loading if we finished the initial check 
-        // AND haven't been unmounted.
         if (isMounted) setLoading(false);
       }
 
-      // 2. Setup long-running listener for all auth changes
       const { data: { subscription } } = onAuthStateChange(async (event, session) => {
         if (!isMounted) return;
 
         if (session) {
           setUser(session.user);
-          const adminStatus = await verifyAdmin(session.user.email);
+          const { role, active } = await verifyUserRole(session.user.email);
           if (isMounted) {
-            setIsAdmin(adminStatus);
+            setUserRole(role);
+            setIsActive(active);
             setLoading(false);
           }
         } else {
-          // Explicit logout or session expiry
           if (isMounted) {
             setUser(null);
-            setIsAdmin(false);
+            setUserRole(null);
+            setIsActive(false);
             setLoading(false);
           }
         }
@@ -153,11 +189,17 @@ export default function App() {
       isMounted = false;
       if (authListener) authListener.unsubscribe();
     };
-  }, [verifyAdmin]);
+  }, [verifyUserRole]);
 
   return (
     <BrowserRouter>
-      <AppRoutes user={user} isAdmin={isAdmin} loading={loading} />
+      <AppRoutes 
+        user={user} 
+        isAdmin={userRole === 'admin'} 
+        isVolunteer={userRole === 'volunteer'} 
+        isActive={isActive}
+        loading={loading} 
+      />
     </BrowserRouter>
   );
 }

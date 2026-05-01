@@ -1,0 +1,4 @@
+ALTER TABLE public.attendees 
+ADD COLUMN IF NOT EXISTS phone TEXT,
+ADD COLUMN IF NOT EXISTS additional_info TEXT,
+ADD COLUMN IF NOT EXISTS reference TEXT;

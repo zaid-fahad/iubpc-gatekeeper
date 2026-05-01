@@ -37,15 +37,15 @@ const DashboardOverview = ({ userRole }) => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700 italic">
       <header className="italic">
-        <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter italic">Operational Overview</h2>
-        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic">Real-time system status and metrics</p>
+        <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter italic">Dashboard Overview</h2>
+        <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic">Real-time system status and analytics</p>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 italic">
-        <StatCard label="Active Deployments" value={activeEvents} color="bg-slate-900/50" char="A" />
+        <StatCard label="Active Events" value={activeEvents} color="bg-slate-900/50" char="A" />
         <StatCard label="Total Events" value={events.length} color="bg-slate-900/50" char="E" />
         {isAdmin ? (
-          <StatCard label="Field Operators" value={users.length} color="bg-slate-900/50" char="O" />
+          <StatCard label="Staff Members" value={users.length} color="bg-slate-900/50" char="S" />
         ) : (
           <StatCard label="System Status" value="ONLINE" color="bg-green-500/10" char="S" />
         )}
@@ -54,14 +54,14 @@ const DashboardOverview = ({ userRole }) => {
       <div className="space-y-6 italic">
         <div className="flex justify-between items-end px-2 italic">
           <div>
-            <h3 className="text-xl font-black italic text-white uppercase tracking-tighter italic">Recent Deployments</h3>
-            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1 italic">Latest operations in the registry</p>
+            <h3 className="text-xl font-black italic text-white uppercase tracking-tighter italic">Recent Events</h3>
+            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1 italic">Latest events in the list</p>
           </div>
           <button 
             onClick={() => navigate('/events')}
             className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-green-500 hover:text-white transition-all italic"
           >
-            View Registry <ArrowRight size={12}/>
+            View All Events <ArrowRight size={12}/>
           </button>
         </div>
 
@@ -91,7 +91,7 @@ const DashboardOverview = ({ userRole }) => {
           ))}
           {events.length === 0 && !loading && (
             <div className="p-10 border-2 border-dashed border-slate-900 rounded-3xl text-center italic">
-              <p className="text-slate-600 font-black uppercase tracking-widest text-[10px] italic">No active deployments found in registry</p>
+              <p className="text-slate-600 font-black uppercase tracking-widest text-[10px] italic">No active events found.</p>
             </div>
           )}
         </div>
@@ -104,15 +104,15 @@ const DashboardOverview = ({ userRole }) => {
               <Users size={28}/>
             </div>
             <div className="italic">
-              <h4 className="text-xl font-black italic text-white uppercase tracking-tighter italic">Operator Management</h4>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 italic">Authorize and manage field personnel privileges</p>
+              <h4 className="text-xl font-black italic text-white uppercase tracking-tighter italic">Staff Management</h4>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1 italic">Manage staff permissions and access</p>
             </div>
           </div>
           <button 
             onClick={() => navigate('/operators')}
             className="px-6 py-3 bg-blue-500 text-slate-950 font-black rounded-xl text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/10 active:scale-95 transition-all italic"
           >
-            Manage Personnel
+            Manage Staff
           </button>
         </div>
       )}

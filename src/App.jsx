@@ -29,7 +29,7 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
   const userRole = isAdmin ? 'admin' : 'volunteer';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans overflow-x-hidden selection:bg-green-500/30 selection:text-slate-950 italic">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-green-500/30 selection:text-slate-950 italic">
       <Routes>
         {/* Public Route */}
         <Route 

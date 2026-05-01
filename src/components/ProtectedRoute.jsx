@@ -23,13 +23,13 @@ export const ProtectedRoute = ({ children, user, isAdmin, loading }) => {
           </div>
           <div className="space-y-3">
               <h2 className="text-3xl font-black text-white uppercase italic leading-none tracking-tighter">ACCESS DENIED</h2>
-              <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] leading-relaxed">Identity <b>{user.email}</b><br/>UNAUTHORIZED FOR ROOT ACCESS</p>
+              <p className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] leading-relaxed">Account <b>{user.email}</b><br/>DOES NOT HAVE PERMISSION TO ACCESS THIS SECTION</p>
           </div>
           <button 
             onClick={signOut} 
             className="w-full py-5 bg-slate-950 text-slate-400 hover:text-white rounded-2xl font-black uppercase tracking-[0.3em] active:scale-95 transition-all text-[9px] italic border border-slate-800 shadow-xl"
           >
-            RELINQUISH CONTROL
+            SIGN OUT
           </button>
         </div>
       </div>

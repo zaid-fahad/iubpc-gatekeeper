@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { QrCode, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock } from 'lucide-react';
+import { QrCode, Users, Phone, Mail, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock, UserPlus } from 'lucide-react';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs } from '../api/attendees';
+import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
 import GateActBtn from '../components/GateActBtn';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -21,6 +21,13 @@ const GateControl = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const html5QrCodeRef = useRef(null);
+
+  // On-spot registration states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
+  const [addError, setAddError] = useState("");
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [pendingAttendee, setPendingAttendee] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,12 +69,13 @@ const GateControl = () => {
     setAttendeeHistory(logs || []);
   };
 
-  const updateStatus = async (field) => {
-    if (!member) return;
-    const isActivating = !member[field];
+  const updateStatus = async (field, overrideMember = null) => {
+    const currentMember = overrideMember || member;
+    if (!currentMember) return;
+    const isActivating = !currentMember[field];
     
     // 1. Update DB Status
-    const { error: uError } = await updateAttendeeStatus(member.id, field, isActivating);
+    const { error: uError } = await updateAttendeeStatus(currentMember.id, field, isActivating);
     if (uError) {
         setError("Update failed.");
         console.error("Status Update Error:", uError);
@@ -76,7 +84,7 @@ const GateControl = () => {
 
     // 2. Insert Log
     const { error: logError } = await insertEntryLog({
-        attendee_id: member.id,
+        attendee_id: currentMember.id,
         event_id: eventId,
         action_type: field,
         status: isActivating,
@@ -85,15 +93,78 @@ const GateControl = () => {
     if (logError) console.error("Log Insert Error:", logError);
 
     // 3. Update Local State
-    const updatedMember = { ...member, [field]: isActivating };
-    setMember(updatedMember);
-    setAttendees(prev => prev.map(a => a.id === member.id ? updatedMember : a));
+    const updatedMember = { ...currentMember, [field]: isActivating };
+    if (!overrideMember) setMember(updatedMember);
+    setAttendees(prev => prev.map(a => a.id === currentMember.id ? updatedMember : a));
 
     // 4. Refresh Logs
     const { data: gLogs } = await fetchEventLogs(eventId);
     setGlobalHistory(gLogs || []);
-    const { data: aLogs } = await fetchAttendeeLogs(member.id);
-    setAttendeeHistory(aLogs || []);
+    if (!overrideMember) {
+      const { data: aLogs } = await fetchAttendeeLogs(currentMember.id);
+      setAttendeeHistory(aLogs || []);
+    }
+  };
+
+  const handleManualAdd = async (e) => {
+    e.preventDefault();
+    setAddError("");
+    
+    // For guests, we can auto-generate a placeholder student_id if it's empty to avoid UI issues
+    const studentId = addForm.isGuest && !addForm.sid 
+      ? `GUEST-${Date.now().toString().slice(-6)}` 
+      : addForm.sid;
+    
+    const email = addForm.email || (addForm.isGuest ? `guest-${Date.now()}@internal.com` : "");
+
+    // Pre-flight check for duplicates
+    const isDuplicate = attendees.some(a => 
+      (email && a.email?.toLowerCase() === email.toLowerCase()) || 
+      (studentId && a.student_id === studentId)
+    );
+
+    if (isDuplicate) {
+      setAddError("Attendee is already on the list.");
+      return;
+    }
+
+    const { data, error } = await insertAttendee({ 
+      event_id: eventId, 
+      full_name: addForm.name, 
+      email: email, 
+      student_id: studentId,
+      phone: addForm.phone,
+      additional_info: addForm.info,
+      reference: addForm.isGuest ? addForm.ref : null,
+      is_on_spot: true
+    });
+
+    if (!error && data) {
+      const newAttendee = data[0];
+      setAttendees(prev => [newAttendee, ...prev]);
+      setPendingAttendee(newAttendee);
+      setShowAddModal(false);
+      setAddForm({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
+      setShowPromptModal(true);
+    } else {
+      setAddError(error?.message || "Registration failed. Check for duplicate ID.");
+    }
+  };
+
+  const handlePromptDecision = async (authorize) => {
+    if (!pendingAttendee) return;
+    
+    if (authorize) {
+      await updateStatus('checked_in_1', pendingAttendee);
+      // Re-fetch the updated attendee from the local state to ensure we have the check-in status
+      const updatedAttendee = { ...pendingAttendee, checked_in_1: true };
+      selectMember(updatedAttendee);
+    } else {
+      selectMember(pendingAttendee);
+    }
+    
+    setShowPromptModal(false);
+    setPendingAttendee(null);
   };
 
   const startScanner = () => {
@@ -104,7 +175,7 @@ const GateControl = () => {
         html5QrCode.start({ facingMode: "environment" }, { fps: 25, qrbox: 250 }, (text) => {
             const found = attendees.find(a => a.student_id === text || a.id === text);
             if (found) selectMember(found);
-            else setError("Identity not recognized.");
+            else setError("Attendee not recognized.");
         }, () => {}).catch(() => setError("Camera connection failed."));
     }, 100);
   };
@@ -128,7 +199,7 @@ const GateControl = () => {
           </button>
           <div>
             <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event.title}</h2>
-            <p className="text-green-500 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Control Matrix</p>
+            <p className="text-green-500 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Check-in Status</p>
           </div>
         </div>
       </header>
@@ -140,31 +211,44 @@ const GateControl = () => {
             <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search manifest..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
+                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search attendees..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
                 </div>
+                <button 
+                  onClick={() => setShowAddModal(true)}
+                  className="p-3.5 rounded-xl border border-slate-800 bg-slate-950 text-purple-400 hover:text-purple-300 transition-all active:scale-95 shadow-xl"
+                  title="On-spot Registration"
+                >
+                  <UserPlus size={20}/>
+                </button>
                 <button onClick={() => showScanner ? stopScanner() : startScanner()} className={`p-3.5 rounded-xl border transition-all ${showScanner ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-slate-950 border-slate-800 text-green-500 shadow-xl'}`}>{showScanner ? <X size={20}/> : <QrCode size={20}/>}</button>
             </div>
             {showScanner && <div className="aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-800 relative shadow-2xl animate-in zoom-in"><div id="gate-reader" className="w-full h-full"></div></div>}
             {error && <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20 text-red-400 text-[8px] font-black text-center uppercase italic">{error}</div>}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-12 space-y-2">
+          <div className="flex-1 overflow-y-auto px-4 pb-12 space-y-3">
             {filtered.length > 0 ? filtered.slice(0, 50).map(m => (
-              <button key={m.id} onClick={() => selectMember(m)} className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-green-500 border-green-400 shadow-lg' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}>
-                <div className="flex items-center gap-3">
-                  <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${m.full_name}&background=000&color=fff`} className="w-8 h-8 rounded-lg border-2 border-slate-950 object-cover" />
+              <button key={m.id} onClick={() => selectMember(m)} className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-green-500/10 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.05)]' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'}`}>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${m.full_name}&background=000&color=fff`} className={`w-12 h-12 rounded-xl border-2 object-cover transition-all ${member?.id === m.id ? 'border-green-500/30' : 'border-slate-800'}`} />
+                    {m.checked_in_1 && <div className={`absolute -top-1 -right-1 p-1 rounded-full border-2 ${member?.id === m.id ? 'bg-green-500 border-slate-950 text-slate-950' : 'bg-green-500/80 border-slate-950 text-slate-950'}`}><CheckCircle2 size={8} /></div>}
+                  </div>
                   <div>
-                    <p className={`text-[11px] font-black uppercase tracking-tight leading-none ${member?.id === m.id ? 'text-slate-950' : 'text-white'}`}>{m.full_name}</p>
-                    <p className={`text-[8px] font-bold uppercase mt-1 ${member?.id === m.id ? 'text-slate-800' : 'text-slate-600'}`}>{m.student_id}</p>
+                    <p className={`text-sm font-black uppercase tracking-tight leading-none ${member?.id === m.id ? 'text-green-400' : 'text-slate-200 group-hover:text-white'}`}>{m.full_name}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${member?.id === m.id ? 'text-green-500/60' : 'text-slate-500'}`}>{m.student_id}</p>
+                      {m.is_on_spot && <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${member?.id === m.id ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>Spot</span>}
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.checked_in_1 ? 'bg-green-500 border border-slate-950' : 'bg-slate-800'}`}></div>
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.token_given ? 'bg-purple-500 border border-slate-950' : 'bg-slate-800'}`}></div>
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.checked_in_2 ? 'bg-blue-500 border border-slate-950' : 'bg-slate-800'}`}></div>
+                <div className="flex gap-1.5">
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_1 ? 'bg-green-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Checked In"></div>
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.token_given ? 'bg-purple-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Food Token"></div>
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_2 ? 'bg-blue-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Check-in 2"></div>
                 </div>
               </button>
-            )) : <div className="text-center py-10 opacity-20 uppercase text-[9px] font-black tracking-widest">No Matches Found</div>}
+            )) : <div className="text-center py-10 opacity-20 uppercase text-[10px] font-black tracking-widest">No Matches Found</div>}
           </div>
         </div>
 
@@ -173,8 +257,8 @@ const GateControl = () => {
           {!member ? (
             <div className="flex-1 flex flex-col items-center justify-center p-12 opacity-20 text-center">
               <ScanLine size={60} className="mb-4" />
-              <h3 className="text-xl font-black uppercase tracking-[0.2em]">Ready for Intake</h3>
-              <p className="text-[10px] font-bold mt-2 uppercase tracking-widest">Select an identity from the manifest</p>
+              <h3 className="text-xl font-black uppercase tracking-[0.2em]">Ready for Check-in</h3>
+              <p className="text-[10px] font-bold mt-2 uppercase tracking-widest">Select an attendee from the list</p>
               
               <div className="mt-12 w-full max-w-xs space-y-3 text-left">
                 <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><History size={12}/> Live Feed</h4>
@@ -182,7 +266,7 @@ const GateControl = () => {
                   <div key={h.id} className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/50 flex flex-col gap-1">
                     <div className="flex justify-between items-center">
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[150px]">
-                        {(h.attendee?.full_name || h.attendees?.full_name || 'Unit')} 
+                        {(h.attendee?.full_name || h.attendees?.full_name || 'Attendee')} 
                         <span className="text-green-500"> → {h.action_type.replaceAll('_', ' ')}</span>
                       </p>
                       <span className="text-[7px] font-black text-slate-700 uppercase">{new Date(h.created_at).toLocaleTimeString()}</span>
@@ -192,26 +276,70 @@ const GateControl = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 animate-in fade-in slide-in-from-right-4">
-                <div className="flex items-center gap-6">
-                  <div className="relative">
-                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-24 h-24 rounded-2xl border-4 border-slate-900 object-cover bg-slate-800 shadow-2xl" />
-                    {member.checked_in_1 && <div className="absolute -top-1.5 -right-1.5 bg-green-500 p-2 rounded-full border-4 border-slate-950 shadow-lg"><CheckCircle2 size={12} className="text-black" /></div>}
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 animate-in fade-in slide-in-from-right-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-8 bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800/50 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 pointer-events-none opacity-5">
+                    <Users size={120} className="text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-3xl font-black italic text-white leading-none uppercase tracking-tighter">{member.full_name}</h3>
-                    <div className="flex items-center gap-3 mt-3">
-                      <p className="text-[11px] font-black text-green-500 tracking-[0.2em] uppercase flex items-center gap-1.5"><IdCard size={14}/> ID: {member.student_id}</p>
-                      <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                      <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">{member.email}</p>
+                  
+                  <div className="relative shrink-0">
+                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-28 h-28 rounded-[2rem] border-4 border-slate-950 object-cover bg-slate-800 shadow-2xl" />
+                    {member.checked_in_1 && <div className="absolute -top-2 -right-2 bg-green-500 p-2.5 rounded-full border-4 border-slate-950 shadow-lg text-slate-950"><CheckCircle2 size={14} /></div>}
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h3 className="text-2xl lg:text-3xl font-black italic text-white leading-none uppercase tracking-tighter">{member.full_name}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest border ${member.is_on_spot ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                          {member.is_on_spot ? 'On-Spot' : 'Pre-Registered'}
+                        </span>
+                        {member.reference && (
+                          <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-slate-800 border border-slate-700 text-slate-400">
+                            Ref: {member.reference}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 pt-2">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Student Identification</p>
+                        <p className="text-sm font-bold text-green-400 uppercase flex items-center gap-2 tracking-wider">
+                          <IdCard size={16} className="opacity-50"/> {member.student_id}
+                        </p>
+                      </div>
+                      
+                      {member.phone && (
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Contact Number</p>
+                          <p className="text-sm font-bold text-slate-200 uppercase flex items-center gap-2">
+                            <Phone size={16} className="opacity-50 text-purple-400"/> {member.phone}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Registered Email</p>
+                        <p className="text-sm font-bold text-slate-300 uppercase flex items-center gap-2 truncate">
+                          <Mail size={16} className="opacity-50 text-blue-400"/> {member.email}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {member.additional_info && (
+                  <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl animate-in slide-in-from-left-2">
+                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2">Notes</p>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase leading-relaxed italic">{member.additional_info}</p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-3">
-                  <GateActBtn label="Gate Entry Log" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
-                  <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
-                  <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
+                  <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
+                  <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
+                  <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
                 </div>
 
                 <div className="space-y-3">
@@ -223,7 +351,7 @@ const GateControl = () => {
                           <div className={`w-1.5 h-1.5 rounded-full ${h.status ? 'bg-green-500' : 'bg-red-500'}`}></div>
                           <div>
                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tight leading-none">{h.action_type.replaceAll('_', ' ')} <span className="text-[8px] text-slate-600 ml-1.5 font-medium">{h.status ? 'ACTIVATED' : 'REVERSED'}</span></p>
-                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase mt-1 tracking-widest leading-none">Operator: {h.admin_email}</p>}
+                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase mt-1 tracking-widest leading-none">Staff: {h.admin_email}</p>}
                           </div>
                         </div>
                         <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">{new Date(h.created_at).toLocaleTimeString()}</span>
@@ -250,13 +378,26 @@ const GateControl = () => {
                         </div>
                         <div>
                             <h3 className="text-xl font-black italic text-white leading-tight uppercase tracking-tighter">{member.full_name}</h3>
-                            <p className="text-[9px] font-black text-slate-500 tracking-[0.2em] uppercase mt-1 italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" /> ID: {member.student_id}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <p className="text-[9px] font-black text-slate-500 tracking-[0.2em] uppercase italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" /> ID: {member.student_id}</p>
+                              {member.phone && <p className="text-[8px] font-bold text-slate-600 uppercase italic flex items-center gap-1.5 leading-none"><History size={10} className="text-purple-500 rotate-90"/> {member.phone}</p>}
+                            </div>
+                            {member.reference && (
+                              <p className="text-[7px] font-black text-purple-400 uppercase tracking-widest mt-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md inline-block">REF: {member.reference}</p>
+                            )}
                         </div>
                     </div>
+
+                    {member.additional_info && (
+                      <div className="bg-slate-950/50 border border-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-[7px] font-black text-slate-700 uppercase tracking-[0.3em] mb-1.5">Notes</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed italic">{member.additional_info}</p>
+                      </div>
+                    )}
                     <div className="space-y-2.5">
-                        <GateActBtn label="Gate Entry Log" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
-                        <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
-                        <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
+                        <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
+                        <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
+                        <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
                     </div>
 
                     <div className="space-y-3 pt-4">
@@ -267,14 +408,115 @@ const GateControl = () => {
                                 <p className="text-[10px] font-bold text-slate-500 uppercase">{h.action_type.replaceAll('_', ' ')}</p>
                                 <span className="text-[9px] font-black text-slate-800">{new Date(h.created_at).toLocaleTimeString()}</span>
                             </div>
-                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase tracking-tighter truncate">BY: {h.admin_email}</p>}
+                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase tracking-tighter truncate">Staff: {h.admin_email}</p>}
                           </div>
                         )) : <p className="text-[9px] font-bold text-slate-800 uppercase text-center py-2">No activity</p>}
                     </div>
 
-                    <button onClick={() => setMember(null)} className="w-full py-5 bg-slate-950 text-slate-600 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl border border-slate-800 active:scale-95 transition-all mt-4 italic shadow-lg">Dismiss Session</button>
+                    <button onClick={() => setMember(null)} className="w-full py-5 bg-slate-950 text-slate-600 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl border border-slate-800 active:scale-95 transition-all mt-4 italic shadow-lg">Close Details</button>
                 </div>
             </div>
+        </div>
+      )}
+
+      {/* ON-SPOT REGISTRATION MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in zoom-in duration-300 italic">
+            <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
+                <div className="flex justify-between items-center italic">
+                  <div>
+                    <h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">On-Spot Registration</h2>
+                    <p className="text-[9px] font-black text-purple-500 uppercase tracking-[0.3em] mt-2">New Entry Registration</p>
+                  </div>
+                  <X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAddModal(false)} />
+                </div>
+                {addError && <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-red-400 text-[10px] font-black text-center uppercase italic">{addError}</div>}
+                
+                <div className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-800 rounded-2xl group cursor-pointer" onClick={() => setAddForm({...addForm, isGuest: !addForm.isGuest})}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${addForm.isGuest ? 'bg-purple-500 text-slate-950' : 'bg-slate-900 text-slate-600'}`}>
+                      <UserPlus size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">Guest</p>
+                      <p className="text-[8px] font-bold text-slate-600 uppercase">Only name is mandatory</p>
+                    </div>
+                  </div>
+                  <div className={`w-10 h-5 rounded-full relative transition-all ${addForm.isGuest ? 'bg-purple-500' : 'bg-slate-800'}`}>
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${addForm.isGuest ? 'left-6' : 'left-1'}`}></div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 italic max-h-[60vh] overflow-y-auto px-1 pr-3 scrollbar-hide">
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Full Name</label>
+                      <input value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} placeholder="NAME SURNAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Phone (Optional)</label>
+                        <input value={addForm.phone} onChange={e => setAddForm({...addForm, phone: e.target.value})} placeholder="+880..." className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                      <div className={`space-y-1.5 transition-all ${addForm.isGuest ? 'opacity-40' : 'opacity-100'}`}>
+                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Student ID {!addForm.isGuest && "(MANDATORY)"}</label>
+                        <input value={addForm.sid} onChange={e => setAddForm({...addForm, sid: e.target.value})} placeholder="0000000" required={!addForm.isGuest} className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Email Address (Optional)</label>
+                      <input value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} placeholder="EMAIL@IUB.EDU.BD" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                    </div>
+
+                    {addForm.isGuest && (
+                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                        <label className="text-[8px] font-black text-purple-500 uppercase tracking-widest ml-2">Reference / Org (MANDATORY)</label>
+                        <input value={addForm.ref} onChange={e => setAddForm({...addForm, ref: e.target.value})} placeholder="REF NAME / CLUB / UNIV" required={addForm.isGuest} className="w-full bg-slate-950 border border-purple-500/30 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Additional Info (Optional)</label>
+                      <textarea value={addForm.info} onChange={e => setAddForm({...addForm, info: e.target.value})} placeholder="NOTES / ALLERGIES / DEPT..." className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest h-24 resize-none" />
+                    </div>
+                </div>
+                <button className="w-full py-5 bg-purple-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-purple-500/20 active:scale-95 transition-all border-b-4 border-purple-700 italic">Add Person</button>
+            </form>
+        </div>
+      )}
+
+      {/* POST-REGISTRATION PROMPT */}
+      {showPromptModal && pendingAttendee && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300 italic">
+          <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 w-full max-w-sm text-center space-y-8 shadow-2xl italic">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/20 text-green-500">
+                <UserPlus size={40} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Registration Complete</h3>
+                <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">{pendingAttendee.full_name}</p>
+              </div>
+            </div>
+            
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Check in this attendee now?</p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => handlePromptDecision(true)}
+                className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 size={18} /> YES, CHECK IN
+              </button>
+              <button 
+                onClick={() => handlePromptDecision(false)}
+                className="w-full py-5 bg-slate-800 text-slate-400 hover:text-white font-black rounded-2xl uppercase tracking-widest active:scale-95 transition-all border border-slate-700 italic"
+              >
+                NOT NOW
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

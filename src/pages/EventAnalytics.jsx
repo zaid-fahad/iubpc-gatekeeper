@@ -199,9 +199,8 @@ const EventAnalytics = () => {
 
         // Finalize and Save
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `${event.title.replace(/\s+/g, '_')}_Manifest.xlsx`);
-    };
-
+        saveAs(new Blob([buffer]), `${event.title.replace(/\s+/g, '_')}_Attendee_List.xlsx`);
+        };
     const handleExportPDF = () => {
         const doc = new jsPDF();
         doc.setFontSize(20);
@@ -290,7 +289,7 @@ const EventAnalytics = () => {
                   </div>
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em]">CAPACITY WARNING</p>
-                    <p className="text-[9px] font-bold uppercase opacity-80 mt-1 italic">Distribution reached {stats.tokenPct}% of threshold ({tokenThreshold} units)</p>
+                    <p className="text-[9px] font-bold uppercase opacity-80 mt-1 italic">Distribution reached {stats.tokenPct}% of threshold ({tokenThreshold} items)</p>
                   </div>
                 </div>
               </div>

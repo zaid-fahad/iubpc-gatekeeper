@@ -99,7 +99,7 @@ const OperatorManifest = () => {
   };
 
   const handleDeleteUser = async (email) => {
-    if (window.confirm("Terminate this operator profile?")) {
+    if (window.confirm("Remove this staff member profile?")) {
         const { error } = await removeUser(email);
         if (!error) fetchUsers();
     }

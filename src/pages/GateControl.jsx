@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { QrCode, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock, UserPlus } from 'lucide-react';
+import { QrCode, Users, Phone, Mail, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock, UserPlus } from 'lucide-react';
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
@@ -226,23 +226,29 @@ const GateControl = () => {
             {error && <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/20 text-red-400 text-[8px] font-black text-center uppercase italic">{error}</div>}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 pb-12 space-y-2">
+          <div className="flex-1 overflow-y-auto px-4 pb-12 space-y-3">
             {filtered.length > 0 ? filtered.slice(0, 50).map(m => (
-              <button key={m.id} onClick={() => selectMember(m)} className={`w-full text-left p-3.5 rounded-2xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-green-500 border-green-400 shadow-lg' : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'}`}>
-                <div className="flex items-center gap-3">
-                  <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${m.full_name}&background=000&color=fff`} className="w-8 h-8 rounded-lg border-2 border-slate-950 object-cover" />
+              <button key={m.id} onClick={() => selectMember(m)} className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-green-500/10 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.05)]' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40'}`}>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img src={m.avatar_url || `https://ui-avatars.com/api/?name=${m.full_name}&background=000&color=fff`} className={`w-12 h-12 rounded-xl border-2 object-cover transition-all ${member?.id === m.id ? 'border-green-500/30' : 'border-slate-800'}`} />
+                    {m.checked_in_1 && <div className={`absolute -top-1 -right-1 p-1 rounded-full border-2 ${member?.id === m.id ? 'bg-green-500 border-slate-950 text-slate-950' : 'bg-green-500/80 border-slate-950 text-slate-950'}`}><CheckCircle2 size={8} /></div>}
+                  </div>
                   <div>
-                    <p className={`text-[11px] font-black uppercase tracking-tight leading-none ${member?.id === m.id ? 'text-slate-950' : 'text-white'}`}>{m.full_name}</p>
-                    <p className={`text-[8px] font-bold uppercase mt-1 ${member?.id === m.id ? 'text-slate-800' : 'text-slate-600'}`}>{m.student_id}</p>
+                    <p className={`text-sm font-black uppercase tracking-tight leading-none ${member?.id === m.id ? 'text-green-400' : 'text-slate-200 group-hover:text-white'}`}>{m.full_name}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${member?.id === m.id ? 'text-green-500/60' : 'text-slate-500'}`}>{m.student_id}</p>
+                      {m.is_on_spot && <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${member?.id === m.id ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>Spot</span>}
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.checked_in_1 ? 'bg-green-500 border border-slate-950' : 'bg-slate-800'}`}></div>
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.token_given ? 'bg-purple-500 border border-slate-950' : 'bg-slate-800'}`}></div>
-                  <div className={`w-1.5 h-1.5 rounded-full ${m.checked_in_2 ? 'bg-blue-500 border border-slate-950' : 'bg-slate-800'}`}></div>
+                <div className="flex gap-1.5">
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_1 ? 'bg-green-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Checked In"></div>
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.token_given ? 'bg-purple-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Food Token"></div>
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_2 ? 'bg-blue-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Check-in 2"></div>
                 </div>
               </button>
-            )) : <div className="text-center py-10 opacity-20 uppercase text-[9px] font-black tracking-widest">No Matches Found</div>}
+            )) : <div className="text-center py-10 opacity-20 uppercase text-[10px] font-black tracking-widest">No Matches Found</div>}
           </div>
         </div>
 
@@ -270,30 +276,56 @@ const GateControl = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 animate-in fade-in slide-in-from-right-4">
-                <div className="flex items-center gap-6">
-                  <div className="relative">
-                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-24 h-24 rounded-2xl border-4 border-slate-900 object-cover bg-slate-800 shadow-2xl" />
-                    {member.checked_in_1 && <div className="absolute -top-1.5 -right-1.5 bg-green-500 p-2 rounded-full border-4 border-slate-950 shadow-lg"><CheckCircle2 size={12} className="text-black" /></div>}
+            <div className="flex-1 overflow-y-auto p-8 space-y-10 animate-in fade-in slide-in-from-right-4">
+                <div className="flex flex-col md:flex-row md:items-center gap-8 bg-slate-900/40 p-8 rounded-[2.5rem] border border-slate-800/50 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 pointer-events-none opacity-5">
+                    <Users size={120} className="text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-3xl font-black italic text-white leading-none uppercase tracking-tighter">{member.full_name}</h3>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
-                      <p className="text-[11px] font-black text-green-500 tracking-[0.2em] uppercase flex items-center gap-1.5 shrink-0"><IdCard size={14}/> ID: {member.student_id}</p>
-                      {member.phone && (
-                        <>
-                          <span className="hidden md:block w-1 h-1 rounded-full bg-slate-800"></span>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 italic"><History size={12} className="text-purple-500 rotate-90"/> {member.phone}</p>
-                        </>
-                      )}
-                      <span className="hidden md:block w-1 h-1 rounded-full bg-slate-800"></span>
-                      <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest shrink-0">{member.email}</p>
-                    </div>
-                    {member.reference && (
-                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
-                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-[0.2em]">REF: {member.reference}</span>
+                  
+                  <div className="relative shrink-0">
+                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-28 h-28 rounded-[2rem] border-4 border-slate-950 object-cover bg-slate-800 shadow-2xl" />
+                    {member.checked_in_1 && <div className="absolute -top-2 -right-2 bg-green-500 p-2.5 rounded-full border-4 border-slate-950 shadow-lg text-slate-950"><CheckCircle2 size={14} /></div>}
+                  </div>
+
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h3 className="text-2xl lg:text-3xl font-black italic text-white leading-none uppercase tracking-tighter">{member.full_name}</h3>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest border ${member.is_on_spot ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                          {member.is_on_spot ? 'On-Spot' : 'Pre-Registered'}
+                        </span>
+                        {member.reference && (
+                          <span className="px-2 py-0.5 rounded text-xs font-black uppercase tracking-widest bg-slate-800 border border-slate-700 text-slate-400">
+                            Ref: {member.reference}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 pt-2">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Student Identification</p>
+                        <p className="text-sm font-bold text-green-400 uppercase flex items-center gap-2 tracking-wider">
+                          <IdCard size={16} className="opacity-50"/> {member.student_id}
+                        </p>
+                      </div>
+                      
+                      {member.phone && (
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Contact Number</p>
+                          <p className="text-sm font-bold text-slate-200 uppercase flex items-center gap-2">
+                            <Phone size={16} className="opacity-50 text-purple-400"/> {member.phone}
+                          </p>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-1 sm:col-span-2">
+                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">Registered Email</p>
+                        <p className="text-sm font-bold text-slate-300 uppercase flex items-center gap-2 truncate">
+                          <Mail size={16} className="opacity-50 text-blue-400"/> {member.email}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

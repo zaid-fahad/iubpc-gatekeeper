@@ -124,7 +124,7 @@ const GateControl = () => {
     );
 
     if (isDuplicate) {
-      setAddError("Identity already exists in manifest.");
+      setAddError("Attendee is already on the list.");
       return;
     }
 
@@ -175,7 +175,7 @@ const GateControl = () => {
         html5QrCode.start({ facingMode: "environment" }, { fps: 25, qrbox: 250 }, (text) => {
             const found = attendees.find(a => a.student_id === text || a.id === text);
             if (found) selectMember(found);
-            else setError("Identity not recognized.");
+            else setError("Attendee not recognized.");
         }, () => {}).catch(() => setError("Camera connection failed."));
     }, 100);
   };
@@ -199,7 +199,7 @@ const GateControl = () => {
           </button>
           <div>
             <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event.title}</h2>
-            <p className="text-green-500 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Control Matrix</p>
+            <p className="text-green-500 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Check-in Status</p>
           </div>
         </div>
       </header>
@@ -211,7 +211,7 @@ const GateControl = () => {
             <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search manifest..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
+                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search attendees..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
                 </div>
                 <button 
                   onClick={() => setShowAddModal(true)}
@@ -251,8 +251,8 @@ const GateControl = () => {
           {!member ? (
             <div className="flex-1 flex flex-col items-center justify-center p-12 opacity-20 text-center">
               <ScanLine size={60} className="mb-4" />
-              <h3 className="text-xl font-black uppercase tracking-[0.2em]">Ready for Intake</h3>
-              <p className="text-[10px] font-bold mt-2 uppercase tracking-widest">Select an identity from the manifest</p>
+              <h3 className="text-xl font-black uppercase tracking-[0.2em]">Ready for Check-in</h3>
+              <p className="text-[10px] font-bold mt-2 uppercase tracking-widest">Select an attendee from the list</p>
               
               <div className="mt-12 w-full max-w-xs space-y-3 text-left">
                 <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><History size={12}/> Live Feed</h4>
@@ -260,7 +260,7 @@ const GateControl = () => {
                   <div key={h.id} className="bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/50 flex flex-col gap-1">
                     <div className="flex justify-between items-center">
                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[150px]">
-                        {(h.attendee?.full_name || h.attendees?.full_name || 'Unit')} 
+                        {(h.attendee?.full_name || h.attendees?.full_name || 'Attendee')} 
                         <span className="text-green-500"> → {h.action_type.replaceAll('_', ' ')}</span>
                       </p>
                       <span className="text-[7px] font-black text-slate-700 uppercase">{new Date(h.created_at).toLocaleTimeString()}</span>
@@ -299,15 +299,15 @@ const GateControl = () => {
 
                 {member.additional_info && (
                   <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl animate-in slide-in-from-left-2">
-                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2">Internal Brief</p>
+                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2">Notes</p>
                     <p className="text-[10px] font-bold text-slate-300 uppercase leading-relaxed italic">{member.additional_info}</p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-3 gap-3">
-                  <GateActBtn label="Gate Entry" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
-                  <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
-                  <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
+                  <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
+                  <GateActBtn label="Gift Issue" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
+                  <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
                 </div>
 
                 <div className="space-y-3">
@@ -319,7 +319,7 @@ const GateControl = () => {
                           <div className={`w-1.5 h-1.5 rounded-full ${h.status ? 'bg-green-500' : 'bg-red-500'}`}></div>
                           <div>
                             <p className="text-[10px] font-bold text-slate-300 uppercase tracking-tight leading-none">{h.action_type.replaceAll('_', ' ')} <span className="text-[8px] text-slate-600 ml-1.5 font-medium">{h.status ? 'ACTIVATED' : 'REVERSED'}</span></p>
-                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase mt-1 tracking-widest leading-none">Operator: {h.admin_email}</p>}
+                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase mt-1 tracking-widest leading-none">Staff: {h.admin_email}</p>}
                           </div>
                         </div>
                         <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">{new Date(h.created_at).toLocaleTimeString()}</span>
@@ -358,14 +358,14 @@ const GateControl = () => {
 
                     {member.additional_info && (
                       <div className="bg-slate-950/50 border border-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-[7px] font-black text-slate-700 uppercase tracking-[0.3em] mb-1.5">Internal Brief</p>
+                        <p className="text-[7px] font-black text-slate-700 uppercase tracking-[0.3em] mb-1.5">Notes</p>
                         <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed italic">{member.additional_info}</p>
                       </div>
                     )}
                     <div className="space-y-2.5">
-                        <GateActBtn label="Gate Entry" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
-                        <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
-                        <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
+                        <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
+                        <GateActBtn label="Gift Issue" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
+                        <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
                     </div>
 
                     <div className="space-y-3 pt-4">
@@ -376,12 +376,12 @@ const GateControl = () => {
                                 <p className="text-[10px] font-bold text-slate-500 uppercase">{h.action_type.replaceAll('_', ' ')}</p>
                                 <span className="text-[9px] font-black text-slate-800">{new Date(h.created_at).toLocaleTimeString()}</span>
                             </div>
-                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase tracking-tighter truncate">BY: {h.admin_email}</p>}
+                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase tracking-tighter truncate">Staff: {h.admin_email}</p>}
                           </div>
                         )) : <p className="text-[9px] font-bold text-slate-800 uppercase text-center py-2">No activity</p>}
                     </div>
 
-                    <button onClick={() => setMember(null)} className="w-full py-5 bg-slate-950 text-slate-600 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl border border-slate-800 active:scale-95 transition-all mt-4 italic shadow-lg">Dismiss Session</button>
+                    <button onClick={() => setMember(null)} className="w-full py-5 bg-slate-950 text-slate-600 hover:text-white font-black uppercase tracking-widest text-[10px] rounded-2xl border border-slate-800 active:scale-95 transition-all mt-4 italic shadow-lg">Close Details</button>
                 </div>
             </div>
         </div>
@@ -393,8 +393,8 @@ const GateControl = () => {
             <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
                 <div className="flex justify-between items-center italic">
                   <div>
-                    <h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">Direct Intake</h2>
-                    <p className="text-[9px] font-black text-purple-500 uppercase tracking-[0.3em] mt-2">On-Spot Registration</p>
+                    <h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">On-Spot Registration</h2>
+                    <p className="text-[9px] font-black text-purple-500 uppercase tracking-[0.3em] mt-2">New Entry Registration</p>
                   </div>
                   <X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAddModal(false)} />
                 </div>
@@ -417,7 +417,7 @@ const GateControl = () => {
 
                 <div className="space-y-4 italic max-h-[60vh] overflow-y-auto px-1 pr-3 scrollbar-hide">
                     <div className="space-y-1.5">
-                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Full Identity</label>
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Full Name</label>
                       <input value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} placeholder="NAME SURNAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
                     </div>
                     
@@ -434,7 +434,7 @@ const GateControl = () => {
 
                     <div className="space-y-1.5">
                       <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Email Address (Optional)</label>
-                      <input value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} placeholder="UNIT@IUB.EDU.BD" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      <input value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} placeholder="EMAIL@IUB.EDU.BD" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
                     </div>
 
                     {addForm.isGuest && (
@@ -463,19 +463,19 @@ const GateControl = () => {
                 <UserPlus size={40} />
               </div>
               <div>
-                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Person Registered</h3>
+                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Registration Complete</h3>
                 <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">{pendingAttendee.full_name}</p>
               </div>
             </div>
             
-            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Authorize immediate gate entry for this person?</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Check in this attendee now?</p>
             
             <div className="space-y-3">
               <button 
                 onClick={() => handlePromptDecision(true)}
                 className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic flex items-center justify-center gap-2"
               >
-                <CheckCircle2 size={18} /> YES, AUTHORIZE
+                <CheckCircle2 size={18} /> YES, CHECK IN
               </button>
               <button 
                 onClick={() => handlePromptDecision(false)}
@@ -492,4 +492,3 @@ const GateControl = () => {
 };
 
 export default GateControl;
-

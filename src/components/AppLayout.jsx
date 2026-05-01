@@ -18,7 +18,7 @@ const AppLayout = ({ children, userRole }) => {
 
   const navItems = [
     
-    ...(isAdmin ? [{ to: '/', icon: <LayoutDashboard size={20}/>, label: 'Overview' },{ to: '/operators', icon: <Users size={20}/>, label: 'Operators' }] : []),
+    ...(isAdmin ? [{ to: '/', icon: <LayoutDashboard size={20}/>, label: 'Overview' },{ to: '/operators', icon: <Users size={20}/>, label: 'Staff' }] : []),
     { to: '/events', icon: <Calendar size={20}/>, label: 'Events' },
   ];
 
@@ -59,7 +59,7 @@ const AppLayout = ({ children, userRole }) => {
                     <div>
                         <h1 className="text-lg font-black italic tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
                         <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest mt-1 italic">
-                            {isAdmin ? 'ADMIN' : 'OPERATOR'}
+                            {isAdmin ? 'ADMIN' : 'STAFF'}
                         </p>
                     </div>
                 </div>
@@ -88,7 +88,7 @@ const AppLayout = ({ children, userRole }) => {
                     className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all italic border border-transparent hover:border-red-500/20"
                 >
                     <LogOut size={18}/>
-                    <span>Terminate</span>
+                    <span>Sign Out</span>
                 </button>
             </div>
         </aside>
@@ -104,7 +104,7 @@ const AppLayout = ({ children, userRole }) => {
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
               <h1 className="text-xl font-black italic tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
               <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1.5 italic leading-none whitespace-nowrap">
-                {isAdmin ? 'ADMIN' : 'OPERATOR'}
+                {isAdmin ? 'ADMIN' : 'STAFF'}
               </p>
             </div>
           )}
@@ -135,10 +135,10 @@ const AppLayout = ({ children, userRole }) => {
           <button 
             onClick={handleSignOut}
             className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 italic border border-transparent hover:border-red-500/20`}
-            title="Terminate Session"
+            title="Sign Out Session"
           >
             <LogOut size={18} className="shrink-0"/>
-            {!isCollapsed && <span className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden whitespace-nowrap">Terminate</span>}
+            {!isCollapsed && <span className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden whitespace-nowrap">Sign Out</span>}
           </button>
         </div>
       </aside>

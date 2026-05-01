@@ -99,7 +99,7 @@ const EventAnalytics = () => {
 
     const handleExportXLSX = async () => {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Event Manifest');
+        const worksheet = workbook.addWorksheet('Attendee List');
 
         // Style constants
         const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
@@ -123,9 +123,9 @@ const EventAnalytics = () => {
         worksheet.getRow(4).font = { bold: true };
         
         const metricsRows = [
-            ['TOTAL MANIFEST', stats.total, '100%', '', 'INITIAL ENTRY (E1)', stats.c1, `${stats.c1Pct}%`],
-            ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`, '', 'TOKEN GRANTED', stats.tokens, `${stats.tokenPct}%`],
-            ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`, '', 'FINAL CLEARANCE (E2)', stats.c2, `${stats.c2Pct}%`]
+            ['TOTAL ATTENDEES', stats.total, '100%', '', 'CHECK-IN 1', stats.c1, `${stats.c1Pct}%`],
+            ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`, '', 'GIFT ISSUED', stats.tokens, `${stats.tokenPct}%`],
+            ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`, '', 'CHECK-IN 2', stats.c2, `${stats.c2Pct}%`]
         ];
         
         metricsRows.forEach((row, i) => {
@@ -215,12 +215,12 @@ const EventAnalytics = () => {
             startY: 35,
             head: [['METRIC', 'COUNT', 'PERCENTAGE']],
             body: [
-                ['TOTAL MANIFEST', stats.total, '100%'],
+                ['TOTAL ATTENDEES', stats.total, '100%'],
                 ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`],
                 ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`],
-                ['INITIAL ENTRY (E1)', stats.c1, `${stats.c1Pct}%`],
-                ['TOKEN GRANTED', stats.tokens, `${stats.tokenPct}%`],
-                ['FINAL CLEARANCE (E2)', stats.c2, `${stats.c2Pct}%`]
+                ['CHECK-IN 1', stats.c1, `${stats.c1Pct}%`],
+                ['GIFT ISSUED', stats.tokens, `${stats.tokenPct}%`],
+                ['CHECK-IN 2', stats.c2, `${stats.c2Pct}%`]
             ],
             theme: 'grid',
             headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -230,7 +230,7 @@ const EventAnalytics = () => {
         // Attendee Details
         doc.setFontSize(12);
         doc.setTextColor(0);
-        doc.text("DETAILED UNIT MANIFEST", 14, doc.lastAutoTable.finalY + 15);
+        doc.text("DETAILED ATTENDEE LIST", 14, doc.lastAutoTable.finalY + 15);
 
         const tableRows = attendees.map(a => [
             a.full_name.toUpperCase(),
@@ -267,7 +267,7 @@ const EventAnalytics = () => {
             </button>
             <div>
                 <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event.title}</h2>
-                <p className="text-blue-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Impact Intelligence Dashboard</p>
+                <p className="text-blue-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Event Analytics Dashboard</p>
             </div>
           </div>
           <div className="flex gap-2 w-full md:w-auto">
@@ -289,7 +289,7 @@ const EventAnalytics = () => {
                     <AlertTriangle size={24} className="animate-pulse" />
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em]">CRITICAL TOKEN CAPACITY</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em]">CAPACITY WARNING</p>
                     <p className="text-[9px] font-bold uppercase opacity-80 mt-1 italic">Distribution reached {stats.tokenPct}% of threshold ({tokenThreshold} units)</p>
                   </div>
                 </div>
@@ -299,7 +299,7 @@ const EventAnalytics = () => {
             {/* TOP STATS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="relative group">
-                    <StatCard label="Total Manifest" value={stats.total} color="bg-slate-900" char="T" />
+                    <StatCard label="Total Attendees" value={stats.total} color="bg-slate-900" char="T" />
                     <div className="absolute -bottom-2 left-4 right-4 bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex justify-between opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0 shadow-2xl z-10">
                         <div className="flex flex-col">
                             <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Pre-Reg</span>
@@ -311,9 +311,9 @@ const EventAnalytics = () => {
                         </div>
                     </div>
                 </div>
-                <StatCard label="Initial Entry" value={stats.c1} color="bg-green-500/5" char="E" />
+                <StatCard label="Check-in 1" value={stats.c1} color="bg-green-500/5" char="E" />
                 <div className="relative group">
-                    <StatCard label="Token Grant" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-purple-500/5"} char="G" />
+                    <StatCard label="Gift Issued" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-purple-500/5"} char="G" />
                     <div className="absolute top-4 right-4 flex flex-col items-end">
                       {isEditingThreshold ? (
                         <div className="flex flex-col items-end gap-1">
@@ -336,7 +336,7 @@ const EventAnalytics = () => {
                       )}
                     </div>
                 </div>
-                <StatCard label="Final Clearance" value={stats.c2} color="bg-blue-500/5" char="C" />
+                <StatCard label="Check-in 2" value={stats.c2} color="bg-blue-500/5" char="C" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -374,7 +374,7 @@ const EventAnalytics = () => {
                 </div>
 
                 <div className="bg-slate-900 border border-slate-800 p-8 rounded-[3rem] shadow-xl flex flex-col">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2 mb-8"><BarChart3 size={14}/> Intake Density</h4>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2 mb-8"><BarChart3 size={14}/> Check-in Activity</h4>
                     <div className="flex-1 flex items-end gap-2 h-40 pb-2">
                         {timelineData.length > 0 ? timelineData.map((d, i) => (
                             <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
@@ -394,7 +394,7 @@ const EventAnalytics = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-slate-900 border border-slate-800 p-8 rounded-[3rem] shadow-xl space-y-6">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><ShieldCheck size={14}/> Operator Manifest</h4>
+                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><ShieldCheck size={14}/> Staff Check-in Log</h4>
                     <div className="space-y-3">
                         {leaderboard.length > 0 ? leaderboard.map(([email, count], i) => (
                             <div key={i} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex items-center justify-between group hover:border-blue-500/50 transition-all">
@@ -408,19 +408,19 @@ const EventAnalytics = () => {
                                 </div>
                             </div>
                         )) : (
-                            <div className="text-center py-10 opacity-10 uppercase text-[9px] font-black tracking-widest">No Operator Data</div>
+                            <div className="text-center py-10 opacity-10 uppercase text-[9px] font-black tracking-widest">No Staff Data</div>
                         )}
-                    </div>
-                </div>
+                        </div>
+                        </div>
 
-                <div className="bg-slate-900 border border-slate-800 p-8 rounded-[3rem] shadow-xl space-y-6">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><History size={14}/> Event Stream</h4>
+                        <div className="bg-slate-900 border border-slate-800 p-8 rounded-[3rem] shadow-xl space-y-6">
+                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-2"><History size={14}/> Recent Activity</h4>
                     <div className="space-y-3">
                         {logs.length > 0 ? logs.slice(0, 5).map(h => (
                             <div key={h.id} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50 flex flex-col gap-1">
                                 <div className="flex justify-between items-center">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[180px]">
-                                        {(h.attendee?.full_name || h.attendees?.full_name || 'Unit')} 
+                                        {(h.attendee?.full_name || h.attendees?.full_name || 'Attendee')} 
                                         <span className="text-blue-500"> → {h.action_type.replaceAll('_', ' ')}</span>
                                     </p>
                                     <div className="flex items-center gap-1.5 text-slate-700">
@@ -428,7 +428,7 @@ const EventAnalytics = () => {
                                         <span className="text-[8px] font-black uppercase">{new Date(h.created_at).toLocaleTimeString()}</span>
                                     </div>
                                 </div>
-                                {h.admin_email && <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest truncate">OP: {h.admin_email}</p>}
+                                {h.admin_email && <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest truncate">Staff: {h.admin_email}</p>}
                             </div>
                         )) : (
                             <div className="text-center py-10 opacity-10 uppercase text-[9px] font-black tracking-widest">No logs detected</div>
@@ -437,7 +437,7 @@ const EventAnalytics = () => {
                 </div>
             </div>
 
-             {/* DETAILED ATTENDEE TABLE */}
+             {/* DETAILED ATTENDEE LIST */}
             <div className="bg-slate-900 border border-slate-800 rounded-[3rem] overflow-hidden shadow-2xl animate-in slide-in-from-bottom-8">
                 <div className="p-8 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-4">
@@ -445,7 +445,7 @@ const EventAnalytics = () => {
                             <Users size={20} className="text-slate-500" />
                         </div>
                         <div>
-                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Detailed Manifest</h4>
+                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Detailed Attendee List</h4>
                             <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-1">Live database synchronization active</p>
                         </div>
                     </div>
@@ -465,12 +465,12 @@ const EventAnalytics = () => {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-slate-950/50 border-b border-slate-800">
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Personnel Identity</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Communications</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Protocol</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">E1</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">TKN</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">E2</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendee Name</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Contact Details</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Registration Type</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 1</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Gift</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 2</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">

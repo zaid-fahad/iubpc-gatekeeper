@@ -103,13 +103,13 @@ const GuestListPortal = () => {
           </button>
           <div>
             <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event?.title}</h2>
-            <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Database Hub</p>
+            <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Attendee Database</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Manual Add</button>
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Add Attendee</button>
           <label className="px-4 py-2.5 bg-green-500 text-slate-950 rounded-xl cursor-pointer hover:bg-green-400 transition-all active:scale-95 flex items-center justify-center border-b-4 border-green-700 shadow-xl font-black text-[9px] uppercase tracking-widest gap-2 italic">
-            <Upload size={16} /> Bulk Import <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
+            <Upload size={16} /> Import CSV <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
           </label>
         </div>
       </header>
@@ -118,12 +118,12 @@ const GuestListPortal = () => {
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center italic">
           <div className="relative w-full md:max-w-xs group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-green-500 transition-colors" size={16} />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search manifest..." />
+            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search attendees..." />
           </div>
           <div className="flex items-center gap-4 italic">
             <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-600 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={12}/> Get Template</button>
             <div className="h-3 w-px bg-slate-800"></div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Units Logged</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Attendees Listed</span>
           </div>
         </div>
       </div>
@@ -156,11 +156,11 @@ const GuestListPortal = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-950/50 border-b border-slate-800">
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Personnel</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Attendee</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Entry 1</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Entry 2</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 2</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -195,19 +195,19 @@ const GuestListPortal = () => {
             </div>
           </>
         )}
-        {!loading && filtered.length === 0 && <div className="text-center py-20 opacity-20 italic font-black uppercase text-xs tracking-[0.5em]">No Data Mapped</div>}
+        {!loading && filtered.length === 0 && <div className="text-center py-20 opacity-20 italic font-black uppercase text-xs tracking-[0.5em]">No attendees found</div>}
       </main>
       {showAdd && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300 italic">
             <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
-                <div className="flex justify-between items-center italic"><h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">Direct Intake</h2><X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAdd(false)} /></div>
+                <div className="flex justify-between items-center italic"><h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">Manual Registration</h2><X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAdd(false)} /></div>
                 <div className="space-y-4 italic">
-                    <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="FULL IDENTITY" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
+                    <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="FULL NAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="EMAIL ADDRESS" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.sid} onChange={e => setForm({...form, sid: e.target.value})} placeholder="STUDENT ID" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.img} onChange={e => setForm({...form, img: e.target.value})} placeholder="IMAGE URL" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                 </div>
-                <button className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic">AUTHORIZE UNIT</button>
+                <button className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic">CONFIRM ATTENDEE</button>
             </form>
         </div>
       )}

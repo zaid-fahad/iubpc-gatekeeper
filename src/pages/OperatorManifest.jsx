@@ -90,7 +90,7 @@ const OperatorManifest = () => {
         setProcessingId(email);
         const { error } = await resetPassword(email);
         if (!error) {
-            alert("Reset link dispatched to unit's secure channel.");
+            alert("Password reset link sent to staff email.");
         } else {
             alert("Dispatch Failure: " + error.message);
         }
@@ -127,23 +127,23 @@ const OperatorManifest = () => {
     <div className="space-y-8 animate-in fade-in duration-700 italic">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 italic">
         <div>
-          <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter italic">Operator Manifest</h2>
-          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic">Authorize and manage field personnel privileges</p>
+          <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter italic">Staff List</h2>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-2 italic">Manage staff permissions and access</p>
         </div>
         <button 
           onClick={() => setShowUserModal(true)} 
           className="px-6 py-3 bg-blue-500 text-slate-950 rounded-xl font-black text-[10px] italic flex items-center gap-2 shadow-2xl shadow-blue-500/20 active:scale-95 transition-all italic w-fit"
         >
-          <UserPlus size={16}/> RECRUIT OPERATOR
+          <UserPlus size={16}/> ADD STAFF
         </button>
       </header>
 
       {/* STATS SUMMARY */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 italic">
-        <StatCard label="Authorized Units" value={stats.total} color="bg-slate-900/40" char="U" />
-        <StatCard label="Active Status" value={stats.active} color="bg-green-500/5" char="A" />
-        <StatCard label="Admin Class" value={stats.admins} color="bg-blue-500/5" char="S" />
-        <StatCard label="Field Staff" value={stats.volunteers} color="bg-slate-900/40" char="V" />
+        <StatCard label="Total Staff" value={stats.total} color="bg-slate-900/40" char="S" />
+        <StatCard label="Active Staff" value={stats.active} color="bg-green-500/5" char="A" />
+        <StatCard label="Administrators" value={stats.admins} color="bg-blue-500/5" char="M" />
+        <StatCard label="Volunteers" value={stats.volunteers} color="bg-slate-900/40" char="V" />
       </div>
 
       {/* CONTROLS */}
@@ -154,7 +154,7 @@ const OperatorManifest = () => {
             value={searchTerm} 
             onChange={e => setSearchTerm(e.target.value)} 
             className="w-full bg-slate-950 border border-slate-800 p-3 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all" 
-            placeholder="Search identity..." 
+            placeholder="Search staff members..." 
           />
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto italic">
@@ -184,7 +184,7 @@ const OperatorManifest = () => {
               </div>
               <div className="italic">
                 <div className="flex items-center gap-3 italic">
-                    <h4 className={`text-base font-black italic uppercase tracking-tight italic ${!u.is_active ? 'text-slate-600' : 'text-white'}`}>{u.full_name || 'ANONYMOUS UNIT'}</h4>
+                    <h4 className={`text-base font-black italic uppercase tracking-tight italic ${!u.is_active ? 'text-slate-600' : 'text-white'}`}>{u.full_name || 'UNKNOWN STAFF'}</h4>
                     <select 
                         value={u.role} 
                         onChange={(e) => handleRoleChange(u.email, e.target.value)}
@@ -199,7 +199,7 @@ const OperatorManifest = () => {
                   <span className={`text-[8px] font-black uppercase tracking-tight italic ${!u.is_active ? 'text-slate-700' : 'text-slate-500'}`}>{u.email}</span>
                   <span className="w-1 h-1 bg-slate-800 rounded-full italic"></span>
                   <span className={`text-[8px] font-black uppercase tracking-widest ${u.is_active ? 'text-green-500' : 'text-red-500'}`}>
-                    {u.is_active ? 'AUTHORIZED' : 'DE-AUTHORIZED'}
+                    {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
               </div>
@@ -222,7 +222,7 @@ const OperatorManifest = () => {
               </button>
               <button 
                 onClick={() => handleDeleteUser(u.email)} 
-                title="Terminate Identity"
+                title="Remove Staff Member"
                 className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-600 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-90 italic shadow-xl"
               >
                 <Trash2 size={20}/>
@@ -235,7 +235,7 @@ const OperatorManifest = () => {
         {filteredUsers.length === 0 && !loading && (
           <div className="p-20 border-2 border-dashed border-slate-900 rounded-[2.5rem] text-center italic">
             <ShieldAlert size={48} className="mx-auto text-slate-900 mb-4 italic" />
-            <p className="text-slate-700 font-black uppercase tracking-[0.2em] text-[10px] italic">No operators matching the current query found in manifest.</p>
+            <p className="text-slate-700 font-black uppercase tracking-[0.2em] text-[10px] italic">No staff members found matching your search.</p>
             <button 
                 onClick={() => { setSearchTerm(""); setRoleFilter("all"); }}
                 className="mt-4 text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-white transition-all italic"
@@ -253,7 +253,7 @@ const OperatorManifest = () => {
             <div className="flex justify-between items-center italic">
                 <div className="flex items-center gap-3 italic">
                     <UserPlus className="text-blue-500" size={24} />
-                    <h2 className="text-2xl font-black italic text-white tracking-tighter uppercase leading-none italic">Recruit Operator</h2>
+                    <h2 className="text-2xl font-black italic text-white tracking-tighter uppercase leading-none italic">Add Staff</h2>
                 </div>
                 <button type="button" onClick={() => setShowUserModal(false)} className="p-2 text-slate-600 hover:text-white transition-colors italic">
                     <X size={20} />
@@ -264,7 +264,7 @@ const OperatorManifest = () => {
                 <div className="space-y-1.5 italic p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl animate-in zoom-in-95 duration-300">
                   <div className="flex items-center gap-2 mb-2">
                     <UserSearch size={14} className="text-blue-500" />
-                    <label className="text-[9px] font-black uppercase tracking-widest text-blue-500 italic">Select from Registered Auth Users</label>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-blue-500 italic">Select from Registered Users</label>
                   </div>
                   <select 
                     onChange={e => {
@@ -280,7 +280,7 @@ const OperatorManifest = () => {
                     disabled={fetchingUnassigned}
                     className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-[10px] font-bold text-white outline-none focus:ring-1 focus:ring-blue-500 shadow-inner italic uppercase tracking-widest disabled:opacity-50"
                   >
-                    <option value="">{fetchingUnassigned ? 'FETCHING IDENTITIES...' : '-- PICK REGISTERED IDENTITY --'}</option>
+                    <option value="">{fetchingUnassigned ? 'FETCHING USERS...' : '-- SELECT REGISTERED USER --'}</option>
                     {unassignedUsers.map(u => (
                       <option key={u.email} value={u.email}>
                         {u.full_name ? `${u.full_name.toUpperCase()} (${u.email})` : u.email}
@@ -309,28 +309,28 @@ const OperatorManifest = () => {
               )}
 
               <div className="space-y-1.5 italic relative">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Unit Identity</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Full Name</label>
                 <div className="relative">
                   <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                   <input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} placeholder="FULL NAME" required className="w-full bg-slate-950 border border-slate-800 p-4 pl-12 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-blue-500 shadow-inner italic uppercase tracking-widest" />
                 </div>
               </div>
               <div className="space-y-1.5 italic relative">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Contact Channel (Email)</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Email Address</label>
                 <div className="relative">
                   <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                   <input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} placeholder="name@iub.edu.bd" required className="w-full bg-slate-950 border border-slate-800 p-4 pl-12 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-blue-500 shadow-inner italic uppercase tracking-widest" />
                 </div>
               </div>
               <div className="space-y-1.5 italic">
-                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Privilege Class</label>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-600 ml-1 italic">Role</label>
                 <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl text-xs font-bold text-white outline-none focus:ring-1 focus:ring-blue-500 shadow-inner italic uppercase tracking-widest appearance-none">
-                  <option value="volunteer">Volunteer (Intake Only)</option>
-                  <option value="admin">Administrator (Full Control)</option>
+                  <option value="volunteer">Volunteer (Check-in Only)</option>
+                  <option value="admin">Administrator (Full Access)</option>
                 </select>
               </div>
             </div>
-            <button className="w-full py-4 bg-blue-500 text-slate-950 font-black rounded-xl uppercase tracking-widest shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border-b-4 border-blue-700 italic text-[10px]">AUTHORIZE OPERATOR</button>
+            <button className="w-full py-4 bg-blue-500 text-slate-950 font-black rounded-xl uppercase tracking-widest shadow-2xl shadow-blue-500/20 active:scale-95 transition-all border-b-4 border-blue-700 italic text-[10px]">ADD STAFF MEMBER</button>
           </form>
         </div>
       )}

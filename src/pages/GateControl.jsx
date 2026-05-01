@@ -277,16 +277,34 @@ const GateControl = () => {
                   </div>
                   <div>
                     <h3 className="text-3xl font-black italic text-white leading-none uppercase tracking-tighter">{member.full_name}</h3>
-                    <div className="flex items-center gap-3 mt-3">
-                      <p className="text-[11px] font-black text-green-500 tracking-[0.2em] uppercase flex items-center gap-1.5"><IdCard size={14}/> ID: {member.student_id}</p>
-                      <span className="w-1 h-1 rounded-full bg-slate-800"></span>
-                      <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">{member.email}</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                      <p className="text-[11px] font-black text-green-500 tracking-[0.2em] uppercase flex items-center gap-1.5 shrink-0"><IdCard size={14}/> ID: {member.student_id}</p>
+                      {member.phone && (
+                        <>
+                          <span className="hidden md:block w-1 h-1 rounded-full bg-slate-800"></span>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 shrink-0 italic"><History size={12} className="text-purple-500 rotate-90"/> {member.phone}</p>
+                        </>
+                      )}
+                      <span className="hidden md:block w-1 h-1 rounded-full bg-slate-800"></span>
+                      <p className="text-[9px] font-bold text-slate-600 uppercase tracking-widest shrink-0">{member.email}</p>
                     </div>
+                    {member.reference && (
+                      <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                        <span className="text-[8px] font-black text-purple-400 uppercase tracking-[0.2em]">REF: {member.reference}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
+                {member.additional_info && (
+                  <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl animate-in slide-in-from-left-2">
+                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2">Internal Brief</p>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase leading-relaxed italic">{member.additional_info}</p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-3 gap-3">
-                  <GateActBtn label="Gate Entry Log" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
+                  <GateActBtn label="Gate Entry" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
                   <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
                   <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
                 </div>
@@ -327,11 +345,24 @@ const GateControl = () => {
                         </div>
                         <div>
                             <h3 className="text-xl font-black italic text-white leading-tight uppercase tracking-tighter">{member.full_name}</h3>
-                            <p className="text-[9px] font-black text-slate-500 tracking-[0.2em] uppercase mt-1 italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" /> ID: {member.student_id}</p>
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              <p className="text-[9px] font-black text-slate-500 tracking-[0.2em] uppercase italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" /> ID: {member.student_id}</p>
+                              {member.phone && <p className="text-[8px] font-bold text-slate-600 uppercase italic flex items-center gap-1.5 leading-none"><History size={10} className="text-purple-500 rotate-90"/> {member.phone}</p>}
+                            </div>
+                            {member.reference && (
+                              <p className="text-[7px] font-black text-purple-400 uppercase tracking-widest mt-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md inline-block">REF: {member.reference}</p>
+                            )}
                         </div>
                     </div>
+
+                    {member.additional_info && (
+                      <div className="bg-slate-950/50 border border-slate-800/50 p-4 rounded-2xl">
+                        <p className="text-[7px] font-black text-slate-700 uppercase tracking-[0.3em] mb-1.5">Internal Brief</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed italic">{member.additional_info}</p>
+                      </div>
+                    )}
                     <div className="space-y-2.5">
-                        <GateActBtn label="Gate Entry Log" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
+                        <GateActBtn label="Gate Entry" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
                         <GateActBtn label="Token Grant" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
                         <GateActBtn label="2nd Entry" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
                     </div>
@@ -374,7 +405,7 @@ const GateControl = () => {
                       <UserPlus size={16} />
                     </div>
                     <div>
-                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">Guest Unit</p>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">Guest</p>
                       <p className="text-[8px] font-bold text-slate-600 uppercase">Only name is mandatory</p>
                     </div>
                   </div>
@@ -417,7 +448,7 @@ const GateControl = () => {
                       <textarea value={addForm.info} onChange={e => setAddForm({...addForm, info: e.target.value})} placeholder="NOTES / ALLERGIES / DEPT..." className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest h-24 resize-none" />
                     </div>
                 </div>
-                <button className="w-full py-5 bg-purple-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-purple-500/20 active:scale-95 transition-all border-b-4 border-purple-700 italic">AUTHORIZE UNIT</button>
+                <button className="w-full py-5 bg-purple-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-purple-500/20 active:scale-95 transition-all border-b-4 border-purple-700 italic">Add Person</button>
             </form>
         </div>
       )}
@@ -431,12 +462,12 @@ const GateControl = () => {
                 <UserPlus size={40} />
               </div>
               <div>
-                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Unit Registered</h3>
+                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Person Registered</h3>
                 <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">{pendingAttendee.full_name}</p>
               </div>
             </div>
             
-            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Authorize immediate gate entry for this unit?</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Authorize immediate gate entry for this person?</p>
             
             <div className="space-y-3">
               <button 

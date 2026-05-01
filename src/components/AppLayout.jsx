@@ -144,10 +144,27 @@ const AppLayout = ({ children, userRole }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-h-screen relative italic">
-        <div className="max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 italic">
+      <main className="flex-1 min-h-screen relative italic flex flex-col">
+        <div className="w-full max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 italic flex-grow">
           {children}
         </div>
+        
+        {/* Footer */}
+        <footer className="w-full p-8 border-t border-slate-800/50 mt-auto bg-slate-900/30 backdrop-blur-xl">
+          <div className="flex flex-col items-center gap-4 transition-all">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+                <ShieldCheck size={16}/>
+              </div>
+              <span className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-200 italic">
+                IUBPC Gatekeeper
+              </span>
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 italic">
+              powered by IUBPC Dev Team — Developer: <span className="text-green-500/80">Zaid Fahad</span>
+            </p>
+          </div>
+        </footer>
         
         {/* Decorative Element */}
         <div className="fixed bottom-0 right-0 pointer-events-none opacity-[0.02] p-12 italic hidden md:block">

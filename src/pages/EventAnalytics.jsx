@@ -55,13 +55,18 @@ const EventAnalytics = () => {
         const c1 = attendees.filter(r => r.checked_in_1).length;
         const tokens = attendees.filter(r => r.token_given).length;
         const c2 = attendees.filter(r => r.checked_in_2).length;
+        const attended = attendees.filter(r => r.checked_in_1 || r.checked_in_2).length;
         
         return { 
-            total, onSpot, preReg, c1, tokens, c2,
+            total, onSpot, preReg, c1, tokens, c2, attended,
             c1Pct: total ? Math.round((c1/total)*100) : 0,
             tokenPct: total ? Math.round((tokens/total)*100) : 0,
             c2Pct: total ? Math.round((c2/total)*100) : 0
         };
+    }, [attendees]);
+
+    const attendedAttendees = useMemo(() => {
+        return attendees.filter(a => a.checked_in_1 || a.checked_in_2);
     }, [attendees]);
 
     const tokenAlert = stats.tokens >= tokenThreshold * 0.9;
@@ -296,46 +301,53 @@ const EventAnalytics = () => {
             )}
 
             {/* TOP STATS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="relative group">
+                    <StatCard label="Total Registered" value={stats.total} color="bg-blue-500/5" char="R" />
+                    <div className="absolute top-4 right-4 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <Users size={16} className="text-blue-400" />
+                    </div>
+                </div>
+                <div className="relative group">
+                    <StatCard label="On-Spot Registered" value={stats.onSpot} color="bg-purple-500/5" char="S" />
+                    <div className="absolute top-4 right-4 p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                      <UserPlus size={16} className="text-purple-400" />
+                    </div>
+                </div>
+                <div className="relative group">
+                    <StatCard label="Total Attended" value={stats.attended} color="bg-green-500/5" char="A" />
+                    <div className="absolute top-4 right-4 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                      <UserCheck size={16} className="text-green-400" />
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="relative group">
-                    <StatCard label="Total Attendees" value={stats.total} color="bg-slate-900" char="T" />
-                    <div className="absolute -bottom-2 left-4 right-4 bg-slate-950 border border-slate-800 rounded-lg p-2.5 flex justify-between opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0 shadow-2xl z-10">
-                        <div className="flex flex-col">
-                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Pre-Reg</span>
-                            <span className="text-[10px] font-black text-blue-400 italic">{stats.preReg}</span>
-                        </div>
-                        <div className="flex flex-col text-right">
-                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">On-Spot</span>
-                            <span className="text-[10px] font-black text-purple-500 italic">{stats.onSpot}</span>
-                        </div>
+                <StatCard label="Check-in 1" value={stats.c1} color="bg-slate-900" char="1" />
+                <StatCard label="Food Token" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-slate-900"} char="T" />
+                <StatCard label="Gifts" value={stats.c2} color="bg-slate-900" char="2" />
+                <div className="bg-green-500/20 border border-slate-800 p-8 rounded-[2rem] shadow-xl relative overflow-hidden group hover:border-slate-600 transition-all flex flex-col justify-center">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Food Token Limit</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-3xl font-black italic text-white leading-none">{tokenThreshold}</span>
+                      <button onClick={() => setIsEditingThreshold(true)} className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors">
+                          <Settings2 size={14} className="text-slate-100" />
+                      </button>
                     </div>
+                    {isEditingThreshold && (
+                      <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+                        <input 
+                            autoFocus
+                            type="number" 
+                            value={tokenThreshold} 
+                            onBlur={() => setIsEditingThreshold(false)}
+                            onKeyDown={e => e.key === 'Enter' && setIsEditingThreshold(false)}
+                            onChange={e => setTokenThreshold(parseInt(e.target.value) || 0)}
+                            className="w-full bg-slate-900 border border-purple-500/50 rounded-xl p-3 text-lg font-black text-white outline-none"
+                        />
+                      </div>
+                    )}
                 </div>
-                <StatCard label="Check-in 1" value={stats.c1} color="bg-green-500/5" char="E" />
-                <div className="relative group">
-                    <StatCard label="Food Token" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-purple-500/5"} char="G" />
-                    <div className="absolute top-4 right-4 flex flex-col items-end">
-                      {isEditingThreshold ? (
-                        <div className="flex flex-col items-end gap-1">
-                             <input 
-                                autoFocus
-                                type="number" 
-                                value={tokenThreshold} 
-                                onBlur={() => setIsEditingThreshold(false)}
-                                onKeyDown={e => e.key === 'Enter' && setIsEditingThreshold(false)}
-                                onChange={e => setTokenThreshold(parseInt(e.target.value) || 0)}
-                                className="w-20 bg-slate-950 border border-purple-500/50 rounded-lg p-2 text-[11px] font-black text-white outline-none shadow-xl"
-                            />
-                            <span className="text-[6px] font-black text-purple-400 uppercase tracking-widest">Press Enter</span>
-                        </div>
-                      ) : (
-                        <button onClick={() => setIsEditingThreshold(true)} className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1.5 group/btn">
-                            <span className="text-[7px] font-black text-slate-600 group-hover/btn:text-purple-400 uppercase tracking-tighter transition-colors">Limit: {tokenThreshold}</span>
-                            <Settings2 size={10} className="text-slate-700 group-hover/btn:text-purple-400 transition-colors" />
-                        </button>
-                      )}
-                    </div>
-                </div>
-                <StatCard label="GIft" value={stats.c2} color="bg-blue-500/5" char="C" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -353,7 +365,7 @@ const EventAnalytics = () => {
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                <span>Gift Delivery</span>
+                                <span>Food Token</span>
                                 <span className="text-purple-500">{stats.tokenPct}%</span>
                             </div>
                             <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
@@ -362,7 +374,7 @@ const EventAnalytics = () => {
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                <span>Success Rate</span>
+                                <span>Gifts</span>
                                 <span className="text-blue-500">{stats.c2Pct}%</span>
                             </div>
                             <div className="h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
@@ -444,19 +456,14 @@ const EventAnalytics = () => {
                             <Users size={20} className="text-slate-500" />
                         </div>
                         <div>
-                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Detailed Attendee List</h4>
-                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-1">Live database synchronization active</p>
+                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Attended Attendees List</h4>
+                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-1">Showing only attendees who checked in</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 px-6 py-2 bg-slate-950 rounded-2xl border border-slate-800">
                         <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-black text-blue-400 leading-none">{stats.preReg}</span>
-                            <span className="text-[6px] font-black text-slate-600 uppercase mt-1">PRE-REG</span>
-                        </div>
-                        <div className="w-px h-6 bg-slate-800"></div>
-                        <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-black text-purple-400 leading-none">{stats.onSpot}</span>
-                            <span className="text-[6px] font-black text-slate-600 uppercase mt-1">ON-SPOT</span>
+                            <span className="text-[10px] font-black text-green-400 leading-none">{stats.attended}</span>
+                            <span className="text-[6px] font-black text-slate-600 uppercase mt-1">TOTAL ATTENDED</span>
                         </div>
                     </div>
                 </div>
@@ -468,12 +475,12 @@ const EventAnalytics = () => {
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Contact Details</th>
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Registration Type</th>
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 1</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Gift</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Food Token</th>
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">GIft</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
-                            {attendees.map(a => (
+                            {attendedAttendees.map(a => (
                                 <tr key={a.id} className="hover:bg-slate-800/20 transition-all group">
                                     <td className="p-6">
                                         <div className="flex items-center gap-4">

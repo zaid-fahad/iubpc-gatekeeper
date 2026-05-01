@@ -306,7 +306,7 @@ const GateControl = () => {
 
                 <div className="grid grid-cols-3 gap-3">
                   <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
-                  <GateActBtn label="Gift Issue" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
+                  <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
                   <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
                 </div>
 
@@ -364,7 +364,7 @@ const GateControl = () => {
                     )}
                     <div className="space-y-2.5">
                         <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
-                        <GateActBtn label="Gift Issue" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
+                        <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
                         <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
                     </div>
 

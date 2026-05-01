@@ -135,7 +135,8 @@ const GateControl = () => {
       student_id: studentId,
       phone: addForm.phone,
       additional_info: addForm.info,
-      reference: addForm.isGuest ? addForm.ref : null
+      reference: addForm.isGuest ? addForm.ref : null,
+      is_on_spot: true
     });
 
     if (!error && data) {

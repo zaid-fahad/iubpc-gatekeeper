@@ -6,7 +6,9 @@ import { fetchEventAttendees, fetchEventLogs } from '../api/attendees';
 import StatCard from '../components/StatCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { autoTable } from 'jspdf-autotable';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const EventAnalytics = () => {
     const { id: eventId } = useParams();
@@ -95,29 +97,109 @@ const EventAnalytics = () => {
             .slice(0, 5);
     }, [logs]);
 
-    const handleExportExcel = () => {
-        const headers = ["Full Name", "Student ID", "Email", "Phone", "Type", "Reference", "Entry 1", "Token", "Entry 2"];
-        const rows = attendees.map(a => [
-            a.full_name,
-            a.student_id,
-            a.email || "",
-            a.phone || "",
-            a.is_on_spot ? "On-Spot" : "Pre-Registered",
-            a.reference || "",
-            a.checked_in_1 ? "X" : "",
-            a.token_given ? "X" : "",
-            a.checked_in_2 ? "X" : ""
-        ]);
+    const handleExportXLSX = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Event Manifest');
 
-        const csvContent = [headers, ...rows].map(e => e.map(val => `"${val}"`).join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `${event.title}_manifest.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Style constants
+        const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+        const headerFont = { color: { argb: 'FFFFFFFF' }, bold: true };
+        const centerAlignment = { vertical: 'middle', horizontal: 'center' };
+
+        // 1. Add Summary Section
+        worksheet.mergeCells('A1:I1');
+        const titleCell = worksheet.getCell('A1');
+        titleCell.value = `${event.title.toUpperCase()} - ANALYTICS REPORT`;
+        titleCell.font = { size: 16, bold: true };
+        titleCell.alignment = centerAlignment;
+
+        worksheet.mergeCells('A2:I2');
+        worksheet.getCell('A2').value = `GENERATED: ${new Date().toLocaleString()}`;
+        worksheet.getCell('A2').alignment = centerAlignment;
+
+        // Metrics Table
+        const metricsHeader = ['METRIC', 'COUNT', 'PERCENTAGE', '', 'CHECK-IN STATS', 'COUNT', 'PCT'];
+        worksheet.getRow(4).values = metricsHeader;
+        worksheet.getRow(4).font = { bold: true };
+        
+        const metricsRows = [
+            ['TOTAL MANIFEST', stats.total, '100%', '', 'INITIAL ENTRY (E1)', stats.c1, `${stats.c1Pct}%`],
+            ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`, '', 'TOKEN GRANTED', stats.tokens, `${stats.tokenPct}%`],
+            ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`, '', 'FINAL CLEARANCE (E2)', stats.c2, `${stats.c2Pct}%`]
+        ];
+        
+        metricsRows.forEach((row, i) => {
+            worksheet.getRow(5 + i).values = row;
+        });
+
+        // 2. Add Main Table
+        const tableHeaderRow = 9;
+        const columns = [
+            { header: 'FULL NAME', key: 'name', width: 30 },
+            { header: 'STUDENT ID', key: 'id', width: 15 },
+            { header: 'EMAIL', key: 'email', width: 25 },
+            { header: 'PHONE', key: 'phone', width: 15 },
+            { header: 'TYPE', key: 'type', width: 10 },
+            { header: 'REFERENCE', key: 'ref', width: 15 },
+            { header: 'E1', key: 'e1', width: 8 },
+            { header: 'TKN', key: 'tkn', width: 8 },
+            { header: 'E2', key: 'e2', width: 8 }
+        ];
+
+        worksheet.getRow(tableHeaderRow).values = columns.map(c => c.header);
+        worksheet.columns = columns;
+
+        // Style Table Header
+        const headerRow = worksheet.getRow(tableHeaderRow);
+        headerRow.eachCell((cell) => {
+            cell.fill = headerFill;
+            cell.font = headerFont;
+            cell.alignment = centerAlignment;
+        });
+
+        // Add Data Rows
+        attendees.forEach((a, index) => {
+            const rowIndex = tableHeaderRow + 1 + index;
+            const row = worksheet.getRow(rowIndex);
+            row.values = [
+                a.full_name,
+                a.student_id,
+                a.email || '',
+                a.phone || '',
+                a.is_on_spot ? 'SPOT' : 'PRE',
+                a.reference || '',
+                !!a.checked_in_1,
+                !!a.token_given,
+                !!a.checked_in_2
+            ];
+
+            // Add Interactive Checkboxes (Data Validation)
+            ['G', 'H', 'I'].forEach(col => {
+                const cell = worksheet.getCell(`${col}${rowIndex}`);
+                cell.dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: ['"TRUE,FALSE"']
+                };
+                
+                // Conditional Formatting for Boolean values
+                worksheet.addConditionalFormatting({
+                    ref: `${col}${rowIndex}`,
+                    rules: [
+                        {
+                            type: 'cellIs',
+                            operator: 'equal',
+                            formulae: ['TRUE'],
+                            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFDCFCE7' } }, font: { color: { argb: 'FF166534' } } }
+                        }
+                    ]
+                });
+            });
+        });
+
+        // Finalize and Save
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `${event.title.replace(/\s+/g, '_')}_Manifest.xlsx`);
     };
 
     const handleExportPDF = () => {
@@ -129,7 +211,7 @@ const EventAnalytics = () => {
         doc.text(`ANALYTICS REPORT | GENERATED: ${new Date().toLocaleString().toUpperCase()}`, 14, 28);
         
         // Summary Block
-        doc.autoTable({
+        autoTable(doc, {
             startY: 35,
             head: [['METRIC', 'COUNT', 'PERCENTAGE']],
             body: [
@@ -159,7 +241,7 @@ const EventAnalytics = () => {
             a.checked_in_2 ? "YES" : "NO"
         ]);
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: doc.lastAutoTable.finalY + 20,
             head: [['NAME', 'ID', 'TYPE', 'E1', 'TKN', 'E2']],
             body: tableRows,
@@ -189,8 +271,8 @@ const EventAnalytics = () => {
             </div>
           </div>
           <div className="flex gap-2 w-full md:w-auto">
-            <button onClick={handleExportExcel} className="flex-1 md:flex-none px-4 py-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-green-400 rounded-xl transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest">
-              <Download size={16}/> CSV EXPORT
+            <button onClick={handleExportXLSX} className="flex-1 md:flex-none px-4 py-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-green-400 rounded-xl transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest">
+              <Download size={16}/> XLSX EXPORT
             </button>
             <button onClick={handleExportPDF} className="flex-1 md:flex-none px-4 py-3 bg-slate-900 border border-slate-800 text-slate-400 hover:text-blue-400 rounded-xl transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest">
               <FileText size={16}/> PDF REPORT

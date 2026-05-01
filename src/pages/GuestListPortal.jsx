@@ -38,6 +38,18 @@ const GuestListPortal = () => {
 
   const handleManualAdd = async (e) => {
     e.preventDefault();
+    
+    // Pre-flight check for duplicates
+    const isDuplicate = attendees.some(a => 
+      (form.email && a.email?.toLowerCase() === form.email.toLowerCase()) || 
+      (form.sid && a.student_id === form.sid)
+    );
+
+    if (isDuplicate) {
+      alert("Attendee with this Email or Student ID already exists.");
+      return;
+    }
+
     const { error } = await insertAttendee({ event_id: eventId, full_name: form.name, email: form.email, student_id: form.sid, avatar_url: form.img || null });
     if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'' }); fetchAttendees(); }
     else alert(error.message);

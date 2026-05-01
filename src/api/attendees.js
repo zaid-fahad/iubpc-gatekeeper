@@ -37,7 +37,7 @@ export const fetchAttendeeLogs = async (attendeeId) => {
 };
 
 export const insertAttendee = async (attendeeData) => {
-  return supabase.from('attendees').insert(attendeeData);
+  return supabase.from('attendees').insert(attendeeData).select();
 };
 
 export const bulkInsertAttendees = async (attendeesData) => {

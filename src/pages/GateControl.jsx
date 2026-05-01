@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { QrCode, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock } from 'lucide-react';
+import { QrCode, X, ChevronLeft, IdCard, CheckCircle2, UserCheck, Ticket, ScanLine, Search, History, Clock, UserPlus } from 'lucide-react';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs } from '../api/attendees';
+import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
 import GateActBtn from '../components/GateActBtn';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -21,6 +21,13 @@ const GateControl = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   const html5QrCodeRef = useRef(null);
+
+  // On-spot registration states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
+  const [addError, setAddError] = useState("");
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [pendingAttendee, setPendingAttendee] = useState(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,12 +69,13 @@ const GateControl = () => {
     setAttendeeHistory(logs || []);
   };
 
-  const updateStatus = async (field) => {
-    if (!member) return;
-    const isActivating = !member[field];
+  const updateStatus = async (field, overrideMember = null) => {
+    const currentMember = overrideMember || member;
+    if (!currentMember) return;
+    const isActivating = !currentMember[field];
     
     // 1. Update DB Status
-    const { error: uError } = await updateAttendeeStatus(member.id, field, isActivating);
+    const { error: uError } = await updateAttendeeStatus(currentMember.id, field, isActivating);
     if (uError) {
         setError("Update failed.");
         console.error("Status Update Error:", uError);
@@ -76,7 +84,7 @@ const GateControl = () => {
 
     // 2. Insert Log
     const { error: logError } = await insertEntryLog({
-        attendee_id: member.id,
+        attendee_id: currentMember.id,
         event_id: eventId,
         action_type: field,
         status: isActivating,
@@ -85,15 +93,77 @@ const GateControl = () => {
     if (logError) console.error("Log Insert Error:", logError);
 
     // 3. Update Local State
-    const updatedMember = { ...member, [field]: isActivating };
-    setMember(updatedMember);
-    setAttendees(prev => prev.map(a => a.id === member.id ? updatedMember : a));
+    const updatedMember = { ...currentMember, [field]: isActivating };
+    if (!overrideMember) setMember(updatedMember);
+    setAttendees(prev => prev.map(a => a.id === currentMember.id ? updatedMember : a));
 
     // 4. Refresh Logs
     const { data: gLogs } = await fetchEventLogs(eventId);
     setGlobalHistory(gLogs || []);
-    const { data: aLogs } = await fetchAttendeeLogs(member.id);
-    setAttendeeHistory(aLogs || []);
+    if (!overrideMember) {
+      const { data: aLogs } = await fetchAttendeeLogs(currentMember.id);
+      setAttendeeHistory(aLogs || []);
+    }
+  };
+
+  const handleManualAdd = async (e) => {
+    e.preventDefault();
+    setAddError("");
+    
+    // For guests, we can auto-generate a placeholder student_id if it's empty to avoid UI issues
+    const studentId = addForm.isGuest && !addForm.sid 
+      ? `GUEST-${Date.now().toString().slice(-6)}` 
+      : addForm.sid;
+    
+    const email = addForm.email || (addForm.isGuest ? `guest-${Date.now()}@internal.com` : "");
+
+    // Pre-flight check for duplicates
+    const isDuplicate = attendees.some(a => 
+      (email && a.email?.toLowerCase() === email.toLowerCase()) || 
+      (studentId && a.student_id === studentId)
+    );
+
+    if (isDuplicate) {
+      setAddError("Identity already exists in manifest.");
+      return;
+    }
+
+    const { data, error } = await insertAttendee({ 
+      event_id: eventId, 
+      full_name: addForm.name, 
+      email: email, 
+      student_id: studentId,
+      phone: addForm.phone,
+      additional_info: addForm.info,
+      reference: addForm.isGuest ? addForm.ref : null
+    });
+
+    if (!error && data) {
+      const newAttendee = data[0];
+      setAttendees(prev => [newAttendee, ...prev]);
+      setPendingAttendee(newAttendee);
+      setShowAddModal(false);
+      setAddForm({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
+      setShowPromptModal(true);
+    } else {
+      setAddError(error?.message || "Registration failed. Check for duplicate ID.");
+    }
+  };
+
+  const handlePromptDecision = async (authorize) => {
+    if (!pendingAttendee) return;
+    
+    if (authorize) {
+      await updateStatus('checked_in_1', pendingAttendee);
+      // Re-fetch the updated attendee from the local state to ensure we have the check-in status
+      const updatedAttendee = { ...pendingAttendee, checked_in_1: true };
+      selectMember(updatedAttendee);
+    } else {
+      selectMember(pendingAttendee);
+    }
+    
+    setShowPromptModal(false);
+    setPendingAttendee(null);
   };
 
   const startScanner = () => {
@@ -142,6 +212,13 @@ const GateControl = () => {
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
                   <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search manifest..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
                 </div>
+                <button 
+                  onClick={() => setShowAddModal(true)}
+                  className="p-3.5 rounded-xl border border-slate-800 bg-slate-950 text-purple-400 hover:text-purple-300 transition-all active:scale-95 shadow-xl"
+                  title="On-spot Registration"
+                >
+                  <UserPlus size={20}/>
+                </button>
                 <button onClick={() => showScanner ? stopScanner() : startScanner()} className={`p-3.5 rounded-xl border transition-all ${showScanner ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-slate-950 border-slate-800 text-green-500 shadow-xl'}`}>{showScanner ? <X size={20}/> : <QrCode size={20}/>}</button>
             </div>
             {showScanner && <div className="aspect-video bg-black rounded-xl overflow-hidden border-2 border-slate-800 relative shadow-2xl animate-in zoom-in"><div id="gate-reader" className="w-full h-full"></div></div>}
@@ -277,8 +354,110 @@ const GateControl = () => {
             </div>
         </div>
       )}
+
+      {/* ON-SPOT REGISTRATION MODAL */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl animate-in zoom-in duration-300 italic">
+            <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
+                <div className="flex justify-between items-center italic">
+                  <div>
+                    <h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">Direct Intake</h2>
+                    <p className="text-[9px] font-black text-purple-500 uppercase tracking-[0.3em] mt-2">On-Spot Registration</p>
+                  </div>
+                  <X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAddModal(false)} />
+                </div>
+                {addError && <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-red-400 text-[10px] font-black text-center uppercase italic">{addError}</div>}
+                
+                <div className="flex items-center justify-between p-4 bg-slate-950/50 border border-slate-800 rounded-2xl group cursor-pointer" onClick={() => setAddForm({...addForm, isGuest: !addForm.isGuest})}>
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${addForm.isGuest ? 'bg-purple-500 text-slate-950' : 'bg-slate-900 text-slate-600'}`}>
+                      <UserPlus size={16} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-white uppercase tracking-tighter">Guest Unit</p>
+                      <p className="text-[8px] font-bold text-slate-600 uppercase">Only name is mandatory</p>
+                    </div>
+                  </div>
+                  <div className={`w-10 h-5 rounded-full relative transition-all ${addForm.isGuest ? 'bg-purple-500' : 'bg-slate-800'}`}>
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${addForm.isGuest ? 'left-6' : 'left-1'}`}></div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 italic max-h-[60vh] overflow-y-auto px-1 pr-3 scrollbar-hide">
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Full Identity</label>
+                      <input value={addForm.name} onChange={e => setAddForm({...addForm, name: e.target.value})} placeholder="NAME SURNAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Phone (Optional)</label>
+                        <input value={addForm.phone} onChange={e => setAddForm({...addForm, phone: e.target.value})} placeholder="+880..." className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                      <div className={`space-y-1.5 transition-all ${addForm.isGuest ? 'opacity-40' : 'opacity-100'}`}>
+                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Student ID {!addForm.isGuest && "(MANDATORY)"}</label>
+                        <input value={addForm.sid} onChange={e => setAddForm({...addForm, sid: e.target.value})} placeholder="0000000" required={!addForm.isGuest} className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Email Address (Optional)</label>
+                      <input value={addForm.email} onChange={e => setAddForm({...addForm, email: e.target.value})} placeholder="UNIT@IUB.EDU.BD" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                    </div>
+
+                    {addForm.isGuest && (
+                      <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                        <label className="text-[8px] font-black text-purple-500 uppercase tracking-widest ml-2">Reference / Org (MANDATORY)</label>
+                        <input value={addForm.ref} onChange={e => setAddForm({...addForm, ref: e.target.value})} placeholder="REF NAME / CLUB / UNIV" required={addForm.isGuest} className="w-full bg-slate-950 border border-purple-500/30 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest" />
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest ml-2">Additional Info (Optional)</label>
+                      <textarea value={addForm.info} onChange={e => setAddForm({...addForm, info: e.target.value})} placeholder="NOTES / ALLERGIES / DEPT..." className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-purple-500/50 shadow-inner italic uppercase tracking-widest h-24 resize-none" />
+                    </div>
+                </div>
+                <button className="w-full py-5 bg-purple-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-purple-500/20 active:scale-95 transition-all border-b-4 border-purple-700 italic">AUTHORIZE UNIT</button>
+            </form>
+        </div>
+      )}
+
+      {/* POST-REGISTRATION PROMPT */}
+      {showPromptModal && pendingAttendee && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-2xl animate-in zoom-in duration-300 italic">
+          <div className="bg-slate-900 border border-slate-800 rounded-[3rem] p-10 w-full max-w-sm text-center space-y-8 shadow-2xl italic">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/20 text-green-500">
+                <UserPlus size={40} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-black italic text-white uppercase tracking-tighter leading-none">Unit Registered</h3>
+                <p className="text-[9px] font-bold text-slate-500 uppercase mt-2 tracking-widest">{pendingAttendee.full_name}</p>
+              </div>
+            </div>
+            
+            <p className="text-[11px] font-bold text-slate-400 uppercase leading-relaxed tracking-tight">Authorize immediate gate entry for this unit?</p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => handlePromptDecision(true)}
+                className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 size={18} /> YES, AUTHORIZE
+              </button>
+              <button 
+                onClick={() => handlePromptDecision(false)}
+                className="w-full py-5 bg-slate-800 text-slate-400 hover:text-white font-black rounded-2xl uppercase tracking-widest active:scale-95 transition-all border border-slate-700 italic"
+              >
+                NOT NOW
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default GateControl;
+

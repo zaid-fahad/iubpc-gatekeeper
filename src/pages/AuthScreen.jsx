@@ -34,7 +34,7 @@ const AuthScreen = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 italic animate-in fade-in">
+    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 animate-in fade-in">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
           <div className="inline-flex p-5 rounded-3xl bg-green-500/10 border border-green-500/20 shadow-lg">
@@ -49,18 +49,18 @@ const AuthScreen = () => {
             {isSignUp && (
               <div className="relative animate-in slide-in-from-top-2 duration-300">
                 <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
-                <input type="text" placeholder="FULL NAME" className="w-full px-6 pl-12 py-4.5 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-green-500 text-white outline-none transition-all placeholder:text-slate-700 font-bold uppercase" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+                <input type="text" placeholder="FULL NAME" className="w-full px-6 pl-12 py-4.5 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-green-500 text-white outline-none transition-all placeholder:text-slate-700 font-bold" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
               </div>
             )}
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
-              <input type="email" placeholder="EMAIL ADDRESS" className="w-full px-6 pl-12 py-4.5 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-green-500 text-white outline-none transition-all placeholder:text-slate-700 font-bold uppercase" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <input type="email" placeholder="EMAIL ADDRESS" className="w-full px-6 pl-12 py-4.5 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-green-500 text-white outline-none transition-all placeholder:text-slate-700 font-bold" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
               <input type="password" placeholder="PASSWORD" className="w-full px-6 pl-12 py-4.5 bg-slate-950 border border-slate-800 rounded-2xl focus:ring-2 focus:ring-green-500 text-white outline-none transition-all placeholder:text-slate-700 font-bold" value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
-            <button disabled={loading} className="w-full py-4.5 bg-green-500 text-slate-950 font-black rounded-2xl shadow-lg active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest italic transition-transform">
+            <button disabled={loading} className="w-full py-4.5 bg-green-500 text-slate-950 font-black rounded-2xl shadow-lg active:scale-95 flex items-center justify-center gap-3 uppercase tracking-widest transition-transform">
               {loading ? <Clock className="animate-spin" size={20}/> : <>{isSignUp ? 'REGISTER' : 'LOGIN'} <ArrowRight size={18}/></>}
             </button>
             <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="w-full text-slate-600 text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors text-center">

@@ -25,19 +25,19 @@ const AppLayout = ({ children, userRole }) => {
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row italic">
+    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
       {/* MOBILE HEADER */}
-      <header className="md:hidden flex items-center justify-between p-4 bg-slate-900/50 border-b border-slate-800/50 backdrop-blur-xl sticky top-0 z-[100] italic">
-        <div className="flex items-center gap-3 italic">
-            <button onClick={toggleMobileMenu} className="p-2 -ml-2 text-slate-400 hover:text-white transition-all italic">
+      <header className="md:hidden flex items-center justify-between p-4 bg-slate-900/50 border-b border-slate-800/50 backdrop-blur-xl sticky top-0 z-[100]">
+        <div className="flex items-center gap-3">
+            <button onClick={toggleMobileMenu} className="p-2 -ml-2 text-slate-400 hover:text-white transition-all">
                 <Menu size={20}/>
             </button>
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950 shadow-lg shadow-green-500/20 italic">
+            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950 shadow-lg shadow-green-500/20">
                 <ShieldCheck size={18}/>
             </div>
-            <h1 className="text-base font-black italic tracking-tighter text-white uppercase italic">IUBPC</h1>
+            <h1 className="text-base font-black tracking-tighter text-white uppercase italic">IUBPC</h1>
         </div>
-        <button onClick={handleSignOut} className="p-2 bg-slate-800 rounded-lg text-red-500 italic active:scale-90 transition-all">
+        <button onClick={handleSignOut} className="p-2 bg-slate-800 rounded-lg text-red-500 active:scale-90 transition-all">
             <LogOut size={16}/>
         </button>
       </header>
@@ -50,25 +50,25 @@ const AppLayout = ({ children, userRole }) => {
             className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
             onClick={() => setIsMobileMenuOpen(false)}
         ></div>
-        <aside className={`absolute inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} italic`}>
-            <div className="p-6 flex items-center justify-between italic border-b border-slate-800/50">
-                <div className="flex items-center gap-3 italic">
-                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950 italic">
+        <aside className={`absolute inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950">
                         <ShieldCheck size={18}/>
                     </div>
                     <div>
-                        <h1 className="text-lg font-black italic tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
-                        <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest mt-1 italic">
+                        <h1 className="text-lg font-black tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
+                        <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest mt-1">
                             {isAdmin ? 'ADMIN' : 'STAFF'}
                         </p>
                     </div>
                 </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-600 hover:text-white italic">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-600 hover:text-white">
                     <X size={18}/>
                 </button>
             </div>
 
-            <nav className="flex-1 px-3 space-y-1.5 mt-4 italic">
+            <nav className="flex-1 px-3 space-y-1.5 mt-4">
                 {navItems.map(item => (
                     <NavLink 
                         key={item.to}
@@ -82,10 +82,10 @@ const AppLayout = ({ children, userRole }) => {
                 ))}
             </nav>
 
-            <div className="p-5 mt-auto italic border-t border-slate-800/50">
+            <div className="p-5 mt-auto border-t border-slate-800/50">
                 <button 
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all italic border border-transparent hover:border-red-500/20"
+                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                 >
                     <LogOut size={18}/>
                     <span>Sign Out</span>
@@ -95,15 +95,15 @@ const AppLayout = ({ children, userRole }) => {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out italic self-start`}>
-        <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} italic relative`}>
-          <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0 italic">
+      <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out self-start`}>
+        <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative`}>
+          <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0">
             <ShieldCheck size={22}/>
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
-              <h1 className="text-xl font-black italic tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1.5 italic leading-none whitespace-nowrap">
+              <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
+              <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
                 {isAdmin ? 'ADMIN' : 'STAFF'}
               </p>
             </div>
@@ -117,7 +117,7 @@ const AppLayout = ({ children, userRole }) => {
           </button>
         </div>
 
-        <nav className="flex-1 px-3 space-y-1.5 mt-4 italic">
+        <nav className="flex-1 px-3 space-y-1.5 mt-4">
           {navItems.map(item => (
             <NavLink 
               key={item.to}
@@ -131,10 +131,10 @@ const AppLayout = ({ children, userRole }) => {
           ))}
         </nav>
 
-        <div className="p-5 mt-auto italic">
+        <div className="p-5 mt-auto">
           <button 
             onClick={handleSignOut}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 italic border border-transparent hover:border-red-500/20`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 border border-transparent hover:border-red-500/20`}
             title="Sign Out Session"
           >
             <LogOut size={18} className="shrink-0"/>
@@ -144,8 +144,8 @@ const AppLayout = ({ children, userRole }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-h-screen relative italic flex flex-col">
-        <div className="w-full max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 italic flex-grow">
+      <main className="flex-1 min-h-screen relative flex flex-col">
+        <div className="w-full max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 flex-grow">
           {children}
         </div>
         
@@ -156,18 +156,18 @@ const AppLayout = ({ children, userRole }) => {
               <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
                 <ShieldCheck size={16}/>
               </div>
-              <span className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-200 italic">
+              <span className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-200">
                 IUBPC Gatekeeper
               </span>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 italic">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
               powered by IUBPC Dev Team — Developer: <span className="text-green-500/80">Zaid Fahad</span>
             </p>
           </div>
         </footer>
         
         {/* Decorative Element */}
-        <div className="fixed bottom-0 right-0 pointer-events-none opacity-[0.02] p-12 italic hidden md:block">
+        <div className="fixed bottom-0 right-0 pointer-events-none opacity-[0.02] p-12 hidden md:block">
             <Zap size={400} className="text-green-500" />
         </div>
       </main>

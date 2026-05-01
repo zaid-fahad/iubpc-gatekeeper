@@ -95,7 +95,7 @@ const AppLayout = ({ children, userRole }) => {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out italic`}>
+      <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out italic self-start`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} italic relative`}>
           <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0 italic">
             <ShieldCheck size={22}/>
@@ -144,7 +144,7 @@ const AppLayout = ({ children, userRole }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-h-screen relative italic overflow-x-hidden">
+      <main className="flex-1 min-h-screen relative italic">
         <div className="max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 italic">
           {children}
         </div>

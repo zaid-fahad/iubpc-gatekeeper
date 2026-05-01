@@ -124,8 +124,8 @@ const EventAnalytics = () => {
         
         const metricsRows = [
             ['TOTAL ATTENDEES', stats.total, '100%', '', 'CHECK-IN 1', stats.c1, `${stats.c1Pct}%`],
-            ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`, '', 'GIFT ISSUED', stats.tokens, `${stats.tokenPct}%`],
-            ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`, '', 'CHECK-IN 2', stats.c2, `${stats.c2Pct}%`]
+            ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`, '', 'Food Token', stats.tokens, `${stats.tokenPct}%`],
+            ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`, '', 'GIft', stats.c2, `${stats.c2Pct}%`]
         ];
         
         metricsRows.forEach((row, i) => {
@@ -218,8 +218,8 @@ const EventAnalytics = () => {
                 ['PRE-REGISTERED', stats.preReg, `${Math.round((stats.preReg/stats.total)*100)}%`],
                 ['ON-SPOT REGISTERED', stats.onSpot, `${Math.round((stats.onSpot/stats.total)*100)}%`],
                 ['CHECK-IN 1', stats.c1, `${stats.c1Pct}%`],
-                ['GIFT ISSUED', stats.tokens, `${stats.tokenPct}%`],
-                ['CHECK-IN 2', stats.c2, `${stats.c2Pct}%`]
+                ['Food Token', stats.tokens, `${stats.tokenPct}%`],
+                ['GIft', stats.c2, `${stats.c2Pct}%`]
             ],
             theme: 'grid',
             headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
@@ -312,7 +312,7 @@ const EventAnalytics = () => {
                 </div>
                 <StatCard label="Check-in 1" value={stats.c1} color="bg-green-500/5" char="E" />
                 <div className="relative group">
-                    <StatCard label="Gift Issued" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-purple-500/5"} char="G" />
+                    <StatCard label="Food Token" value={stats.tokens} color={tokenAlert ? "bg-red-500/10" : "bg-purple-500/5"} char="G" />
                     <div className="absolute top-4 right-4 flex flex-col items-end">
                       {isEditingThreshold ? (
                         <div className="flex flex-col items-end gap-1">
@@ -335,7 +335,7 @@ const EventAnalytics = () => {
                       )}
                     </div>
                 </div>
-                <StatCard label="Check-in 2" value={stats.c2} color="bg-blue-500/5" char="C" />
+                <StatCard label="GIft" value={stats.c2} color="bg-blue-500/5" char="C" />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -469,7 +469,7 @@ const EventAnalytics = () => {
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Registration Type</th>
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 1</th>
                                 <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Gift</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 2</th>
+                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">GIft</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">

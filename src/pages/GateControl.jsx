@@ -199,7 +199,7 @@ const GateControl = () => {
           </button>
           <div>
             <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event.title}</h2>
-            <p className="text-green-500 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Check-in Status</p>
+            <p className="text-green-500 text-[10px] font-black uppercase tracking-[0.3em] mt-2 italic">Check-in Status</p>
           </div>
         </div>
       </header>
@@ -210,8 +210,8 @@ const GateControl = () => {
           <div className="p-4 space-y-3 shrink-0">
             <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-700" size={16} />
-                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search attendees..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                  <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search attendees..." className="w-full bg-slate-950 border border-slate-800 p-3.5 pl-10 rounded-xl text-sm font-bold text-white shadow-inner outline-none focus:ring-1 focus:ring-green-500/50 transition-all italic" />
                 </div>
                 <button 
                   onClick={() => setShowAddModal(true)}
@@ -237,8 +237,8 @@ const GateControl = () => {
                   <div>
                     <p className={`text-sm font-black uppercase tracking-tight leading-none ${member?.id === m.id ? 'text-green-400' : 'text-slate-200 group-hover:text-white'}`}>{m.full_name}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <p className={`text-[10px] font-bold uppercase tracking-widest ${member?.id === m.id ? 'text-green-500/60' : 'text-slate-500'}`}>{m.student_id}</p>
-                      {m.is_on_spot && <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${member?.id === m.id ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>Spot</span>}
+                      <p className={`text-[11px] font-bold uppercase tracking-widest ${member?.id === m.id ? 'text-green-500/70' : 'text-slate-400'}`}>{m.student_id}</p>
+                      {m.is_on_spot && <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${member?.id === m.id ? 'bg-purple-500/20 border-purple-500/30 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>Spot</span>}
                     </div>
                   </div>
                 </div>
@@ -373,25 +373,25 @@ const GateControl = () => {
                 <div className="w-full max-w-sm space-y-6">
                     <div className="flex items-center gap-5">
                         <div className="relative">
-                            <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-16 h-16 rounded-xl border-4 border-slate-950 object-cover bg-slate-800 shadow-2xl" />
+                            <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=000&color=fff`} className="w-30 h-30 rounded-xl border-4 border-slate-950 object-cover bg-slate-800 shadow-2xl" />
                             {member.checked_in_1 && <div className="absolute -top-1 -right-1 bg-green-500 p-1.5 rounded-full border-4 border-slate-900 shadow-lg"><CheckCircle2 size={10} className="text-black" /></div>}
                         </div>
                         <div>
                             <h3 className="text-xl font-black italic text-white leading-tight uppercase tracking-tighter">{member.full_name}</h3>
-                            <div className="flex flex-wrap items-center gap-2 mt-1">
-                              <p className="text-[9px] font-black text-slate-500 tracking-[0.2em] uppercase italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" /> ID: {member.student_id}</p>
-                              {member.phone && <p className="text-[8px] font-bold text-slate-600 uppercase italic flex items-center gap-1.5 leading-none"><History size={10} className="text-purple-500 rotate-90"/> {member.phone}</p>}
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <p className="text-sm font-black text-slate-400  uppercase italic flex items-center gap-1.5 leading-none"><IdCard size={12} className="text-green-500" />{member.student_id}</p>
+                              {member.phone && <p className="text-sm font-bold text-slate-400 uppercase italic flex items-center gap-1.5 leading-none"><Phone size={10} className="text-purple-500 "/>{member.phone}</p>}
                             </div>
                             {member.reference && (
-                              <p className="text-[7px] font-black text-purple-400 uppercase tracking-widest mt-1.5 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md inline-block">REF: {member.reference}</p>
+                              <p className="text-md font-black text-purple-400 uppercase tracking-widest mt-3 px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-md inline-block">REF: {member.reference}</p>
                             )}
                         </div>
                     </div>
 
                     {member.additional_info && (
                       <div className="bg-slate-950/50 border border-slate-800/50 p-4 rounded-2xl">
-                        <p className="text-[7px] font-black text-slate-700 uppercase tracking-[0.3em] mb-1.5">Notes</p>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase leading-relaxed italic">{member.additional_info}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1.5">Notes</p>
+                        <p className="text-xs font-bold text-slate-200 uppercase leading-relaxed italic">{member.additional_info}</p>
                       </div>
                     )}
                     <div className="space-y-2.5">
@@ -401,14 +401,14 @@ const GateControl = () => {
                     </div>
 
                     <div className="space-y-3 pt-4">
-                        <h4 className="text-[9px] font-black text-slate-700 uppercase tracking-widest ml-2">Recent Activity</h4>
+                        <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">Recent Activity</h4>
                         {attendeeHistory.length > 0 ? attendeeHistory.slice(0, 3).map(h => (
                           <div key={h.id} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 flex flex-col gap-1">
                             <div className="flex justify-between items-center">
-                                <p className="text-[10px] font-bold text-slate-500 uppercase">{h.action_type.replaceAll('_', ' ')}</p>
-                                <span className="text-[9px] font-black text-slate-800">{new Date(h.created_at).toLocaleTimeString()}</span>
+                                <p className="text-[12px] font-bold text-slate-500 uppercase">{h.action_type.replaceAll('_', ' ')}</p>
+                                <span className="text-xs font-black text-slate-500">{new Date(h.created_at).toLocaleTimeString()}</span>
                             </div>
-                            {h.admin_email && <p className="text-[7px] font-black text-slate-700 uppercase tracking-tighter truncate">Staff: {h.admin_email}</p>}
+                            {h.admin_email && <p className="text-xs font-black text-slate-400 uppercase tracking-tighter truncate">Staff: {h.admin_email}</p>}
                           </div>
                         )) : <p className="text-[9px] font-bold text-slate-800 uppercase text-center py-2">No activity</p>}
                     </div>

@@ -411,11 +411,11 @@ const EventAnalytics = () => {
                             <div key={i} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex items-center justify-between group hover:border-blue-500/50 transition-all">
                                 <div className="flex items-center gap-4">
                                     <div className="w-8 h-8 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 text-[10px] font-black">{i + 1}</div>
-                                    <p className="text-[10px] font-bold text-slate-300 truncate max-w-[150px] uppercase">{email}</p>
+                                    <p className="text-xs font-bold text-slate-300 truncate max-w-[150px] uppercase">{email}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-xs font-black text-white italic">{count}</p>
-                                    <p className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">Actions</p>
+                                    <p className="text-sm font-black text-white italic">{count}</p>
+                                    <p className="text-[9px] font-black text-slate-600 uppercase tracking-tighter">Actions</p>
                                 </div>
                             </div>
                         )) : (
@@ -430,16 +430,16 @@ const EventAnalytics = () => {
                         {logs.length > 0 ? logs.slice(0, 5).map(h => (
                             <div key={h.id} className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800/50 flex flex-col gap-1">
                                 <div className="flex justify-between items-center">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[180px]">
+                                    <p className="text-sm font-bold text-slate-400 uppercase tracking-tighter truncate max-w-[180px]">
                                         {(h.attendee?.full_name || h.attendees?.full_name || 'Attendee')} 
                                         <span className="text-blue-500"> → {h.action_type.replaceAll('_', ' ')}</span>
                                     </p>
                                     <div className="flex items-center gap-1.5 text-slate-700">
                                         <Clock size={10}/>
-                                        <span className="text-[8px] font-black uppercase">{new Date(h.created_at).toLocaleTimeString()}</span>
+                                        <span className="text-sm font-black uppercase">{new Date(h.created_at).toLocaleTimeString()}</span>
                                     </div>
                                 </div>
-                                {h.admin_email && <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest truncate">Staff: {h.admin_email}</p>}
+                                {h.admin_email && <p className="text-xs font-black text-slate-600 uppercase tracking-widest truncate">Staff: {h.admin_email}</p>}
                             </div>
                         )) : (
                             <div className="text-center py-10 opacity-10 uppercase text-[9px] font-black tracking-widest">No logs detected</div>
@@ -456,14 +456,14 @@ const EventAnalytics = () => {
                             <Users size={20} className="text-slate-500" />
                         </div>
                         <div>
-                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em]">Attended Attendees List</h4>
-                            <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-1">Showing only attendees who checked in</p>
+                            <h4 className="text-sm font-black text-white uppercase ">Attended Attendees List</h4>
+                            <p className="text-xs font-black text-slate-600 uppercase tracking-widest mt-1">Showing only attendees who checked in</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4 px-6 py-2 bg-slate-950 rounded-2xl border border-slate-800">
                         <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-black text-green-400 leading-none">{stats.attended}</span>
-                            <span className="text-[6px] font-black text-slate-600 uppercase mt-1">TOTAL ATTENDED</span>
+                            <span className="text-lg font-black text-green-400 leading-none">{stats.attended}</span>
+                            <span className="text-xs font-black text-slate-600 uppercase mt-1">TOTAL ATTENDED</span>
                         </div>
                     </div>
                 </div>
@@ -471,12 +471,12 @@ const EventAnalytics = () => {
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                             <tr className="bg-slate-950/50 border-b border-slate-800">
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendee Name</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest">Contact Details</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Registration Type</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 1</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Food Token</th>
-                                <th className="p-6 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">GIft</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Attendee Name</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest">Contact Details</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">Registration Type</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">Check-in 1</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">Food Token</th>
+                                <th className="p-6 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">GIft</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800/50">
@@ -488,22 +488,22 @@ const EventAnalytics = () => {
                                                 {a.is_on_spot ? <UserPlus size={18}/> : <UserCheck size={18}/>}
                                             </div>
                                             <div>
-                                                <p className="text-[11px] font-black text-white uppercase tracking-tight group-hover:text-blue-400 transition-colors">{a.full_name}</p>
+                                                <p className="text-sm font-black text-white uppercase tracking-tight group-hover:text-blue-400 transition-colors">{a.full_name}</p>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[8px] font-bold text-slate-600 uppercase flex items-center gap-1"><IdCard size={10}/> {a.student_id}</span>
-                                                    {a.reference && <span className="text-[7px] font-black text-purple-400 uppercase tracking-widest px-1.5 py-0.5 bg-purple-500/10 rounded-md border border-purple-500/20">Ref: {a.reference}</span>}
+                                                    <span className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1"><IdCard size={10}/> {a.student_id}</span>
+                                                    {a.reference && <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest px-1.5 py-0.5 bg-purple-500/10 rounded-md border border-purple-500/20">Ref: {a.reference}</span>}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="p-6">
                                         <div className="space-y-1">
-                                            <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-tighter"><Mail size={10} className="text-slate-600"/> {a.email || "---"}</p>
-                                            {a.phone && <p className="text-[9px] font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-tighter"><Phone size={10} className="text-slate-600"/> {a.phone}</p>}
+                                            <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 uppercase "><Mail size={10} className="text-slate-600"/> {a.email || "---"}</p>
+                                            {a.phone && <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 uppercase"><Phone size={10} className="text-slate-600"/> {a.phone}</p>}
                                         </div>
                                     </td>
                                     <td className="p-6 text-center">
-                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-all ${a.is_on_spot ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-black uppercase tracking-widest transition-all ${a.is_on_spot ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
                                             <Tag size={10}/>
                                             {a.is_on_spot ? "Spot" : "Pre"}
                                         </div>

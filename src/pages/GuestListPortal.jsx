@@ -121,7 +121,7 @@ const GuestListPortal = () => {
             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search attendees..." />
           </div>
           <div className="flex items-center gap-4 italic">
-            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-600 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={12}/> Get Template</button>
+            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-200 hover:text-green-400 uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={20}/> Get Template</button>
             <div className="h-3 w-px bg-slate-800"></div>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Attendees Listed</span>
           </div>
@@ -160,7 +160,7 @@ const GuestListPortal = () => {
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 2</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Gift</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -174,8 +174,8 @@ const GuestListPortal = () => {
                         </td>
                         <td className="p-6">
                           <div className="space-y-1">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
-                            <p className="text-[9px] font-medium text-slate-600 lowercase">{row.email}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
+                            <p className="text-xs font-medium text-slate-400 lowercase">{row.email}</p>
                           </div>
                         </td>
                         <td className="p-6 text-center">

@@ -58,12 +58,12 @@ const AppLayout = ({ children, userRole }) => {
                     </div>
                     <div>
                         <h1 className="text-lg font-black tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
-                        <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
                             {isAdmin ? 'ADMIN' : 'STAFF'}
                         </p>
                     </div>
                 </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-600 hover:text-white">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
                     <X size={18}/>
                 </button>
             </div>
@@ -74,7 +74,7 @@ const AppLayout = ({ children, userRole }) => {
                         key={item.to}
                         to={item.to} 
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={({ isActive }) => `flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                        className={({ isActive }) => `flex items-center gap-3 px-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
                     >
                         {React.cloneElement(item.icon, { size: 18 })}
                         <span>{item.label}</span>
@@ -85,7 +85,7 @@ const AppLayout = ({ children, userRole }) => {
             <div className="p-5 mt-auto border-t border-slate-800/50">
                 <button 
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                 >
                     <LogOut size={18}/>
                     <span>Sign Out</span>
@@ -103,7 +103,7 @@ const AppLayout = ({ children, userRole }) => {
           {!isCollapsed && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
               <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
                 {isAdmin ? 'ADMIN' : 'STAFF'}
               </p>
             </div>
@@ -122,7 +122,7 @@ const AppLayout = ({ children, userRole }) => {
             <NavLink 
               key={item.to}
               to={item.to} 
-              className={({ isActive }) => `flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+              className={({ isActive }) => `flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
               title={item.label}
             >
               {React.cloneElement(item.icon, { size: 18, className: 'shrink-0' })}
@@ -134,7 +134,7 @@ const AppLayout = ({ children, userRole }) => {
         <div className="p-5 mt-auto">
           <button 
             onClick={handleSignOut}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 border border-transparent hover:border-red-500/20`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 border border-transparent hover:border-red-500/20`}
             title="Sign Out Session"
           >
             <LogOut size={18} className="shrink-0"/>
@@ -156,12 +156,12 @@ const AppLayout = ({ children, userRole }) => {
               <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
                 <ShieldCheck size={16}/>
               </div>
-              <span className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-200">
+              <span className="text-sm font-black uppercase tracking-[0.4em] text-white">
                 IUBPC Gatekeeper
               </span>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              powered by IUBPC Dev Team — Developer: <span className="text-green-500/80">Zaid Fahad</span>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              powered by IUBPC Dev Team — Developer: <span className="text-green-400 font-black">Zaid Fahad</span>
             </p>
           </div>
         </footer>

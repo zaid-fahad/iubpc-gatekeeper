@@ -67,7 +67,13 @@ const EventRegistry = ({ userRole }) => {
               <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">{ev.date}</p>
             </div>
             <div className="pt-2 flex flex-col gap-2 relative z-10">
-              <button onClick={() => navigate(`/event/${ev.id}/gate`)} className="w-full py-4 bg-green-500 text-slate-950 rounded-xl text-xs font-black uppercase tracking-[0.2em] active:scale-95 transition-all shadow-lg shadow-green-500/5 border-b-4 border-green-700">START CHECK-IN</button>
+              <button 
+                onClick={() => navigate(`/event/${ev.id}/gate`)} 
+                disabled={!ev.is_active}
+                className="w-full py-4 bg-green-500 text-slate-950 rounded-xl text-xs font-black uppercase tracking-[0.2em] active:scale-95 disabled:scale-100 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-500/5 border-b-4 border-green-700 disabled:border-slate-800"
+              >
+                START CHECK-IN
+              </button>
               <div className="flex gap-2">
                 <button onClick={() => navigate(`/event/${ev.id}/guests`)} className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg">ATTENDEES</button>
                 {isAdmin && <button onClick={() => navigate(`/event/${ev.id}/analytics`)} className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg">ANALYTICS</button>}

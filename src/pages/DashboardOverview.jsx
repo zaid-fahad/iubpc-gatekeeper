@@ -69,8 +69,8 @@ const DashboardOverview = ({ userRole }) => {
           {events.slice(0, 3).map(ev => (
             <div 
               key={ev.id} 
-              onClick={() => navigate(`/event/${ev.id}/gate`)}
-              className="bg-slate-900/40 border border-slate-800/50 p-5 rounded-2xl flex items-center justify-between group hover:border-green-500/30 transition-all cursor-pointer italic"
+              onClick={() => ev.is_active && navigate(`/event/${ev.id}/gate`)}
+              className={`bg-slate-900/40 border border-slate-800/50 p-5 rounded-2xl flex items-center justify-between group transition-all italic ${ev.is_active ? 'hover:border-green-500/30 cursor-pointer' : 'opacity-50 grayscale cursor-not-allowed'}`}
             >
               <div className="flex items-center gap-4 italic">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${ev.is_active ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-slate-950 border-slate-800 text-slate-700'}`}>

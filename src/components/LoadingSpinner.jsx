@@ -9,8 +9,8 @@ const LoadingSpinner = () => (
         <Zap className="absolute inset-0 m-auto text-green-500 animate-pulse" size={28} />
     </div>
     <div className="space-y-1">
-        <p className="text-slate-400 font-black text-xs uppercase tracking-[0.5em]">Synchronizing</p>
-        <p className="text-slate-800 text-[8px] uppercase tracking-widest font-black">Secure Terminal v4.0</p>
+        <p className="text-slate-400 font-black text-xs uppercase tracking-[0.5em]">Loading</p>
+        {/* <p className="text-slate-800 text-[8px] uppercase tracking-widest font-black">Secure Terminal v4.0</p> */}
     </div>
   </div>
 );

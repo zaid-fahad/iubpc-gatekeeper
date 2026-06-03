@@ -164,30 +164,41 @@ export default function App() {
         if (!isMounted) return;
 
         if (session) {
-          setUser(session.user);
-          const { role, active } = await verifyUserRole(session.user.email);
-          if (isMounted) {
-            setUserRole(role);
-            setIsActive(active);
-            setLoading(false);
-          }
+          // Only re-verify if the user changed or on explicit sign in
+          setUser(prevUser => {
+            if (prevUser?.id !== session.user.id || event === 'SIGNED_IN') {
+              verifyUserRole(session.user.email).then(({ role, active }) => {
+                if (isMounted) {
+                  setUserRole(role);
+                  setIsActive(active);
+                }
+              });
+            }
+            return session.user;
+          });
         } else {
-          if (isMounted) {
-            setUser(null);
-            setUserRole(null);
-            setIsActive(false);
-            setLoading(false);
-          }
+          setUser(null);
+          setUserRole(null);
+          setIsActive(false);
         }
+        
+        if (isMounted) setLoading(false);
       });
-      authListener = subscription;
+      
+      if (!isMounted) {
+        subscription.unsubscribe();
+      } else {
+        authListener = subscription;
+      }
     };
 
     initAuth();
 
     return () => {
       isMounted = false;
-      if (authListener) authListener.unsubscribe();
+      if (authListener) {
+        authListener.unsubscribe();
+      }
     };
   }, [verifyUserRole]);
 

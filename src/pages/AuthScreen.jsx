@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { signUpAdmin, signInAdmin } from '../api/auth';
 import { 
-  ShieldCheck, Mail, Lock, Clock, ArrowRight, Users 
+  Mail, Lock, Clock, ArrowRight, Users 
 } from 'lucide-react';
 
 const AuthScreen = () => {
@@ -37,10 +37,10 @@ const AuthScreen = () => {
     <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950 animate-in fade-in">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
-          <div className="inline-flex p-5 rounded-3xl bg-green-500/10 border border-green-500/20 shadow-lg">
-            <ShieldCheck className="w-10 h-10 text-green-400 animate-pulse" />
+          <div className="inline-flex p-5 rounded-3xl bg-slate-900/50 border border-slate-800 shadow-lg">
+            <img src="/transparent_logo.webp" alt="Logo" className="w-20 h-20 object-contain animate-pulse" />
           </div>
-          <h1 className="text-4xl font-black italic tracking-tighter text-white uppercase leading-none">Check-in System</h1>
+          <h1 className="text-4xl font-black italic tracking-tighter text-white uppercase leading-none">IUBPC Gatekeeper</h1>
           <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">Event Attendee Tracking</p>
         </div>
         <div className="bg-slate-900/50 backdrop-blur-2xl border border-slate-800 p-8 rounded-[3rem] shadow-2xl relative overflow-hidden text-center">

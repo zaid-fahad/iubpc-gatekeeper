@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from '../api/auth';
 import { 
-  ShieldCheck, LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
+  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
 } from 'lucide-react';
 
 const AppLayout = ({ children, userRole }) => {
@@ -32,8 +32,8 @@ const AppLayout = ({ children, userRole }) => {
             <button onClick={toggleMobileMenu} className="p-2 -ml-2 text-slate-400 hover:text-white transition-all">
                 <Menu size={20}/>
             </button>
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950 shadow-lg shadow-green-500/20">
-                <ShieldCheck size={18}/>
+            <div className="w-8 h-8 flex items-center justify-center">
+                <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-base font-black tracking-tighter text-white uppercase italic">IUBPC</h1>
         </div>
@@ -53,17 +53,17 @@ const AppLayout = ({ children, userRole }) => {
         <aside className={`absolute inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950">
-                        <ShieldCheck size={18}/>
+                    <div className="w-8 h-8 flex items-center justify-center">
+                        <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <div>
                         <h1 className="text-lg font-black tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
-                        <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest mt-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
                             {isAdmin ? 'ADMIN' : 'STAFF'}
                         </p>
                     </div>
                 </div>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-600 hover:text-white">
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
                     <X size={18}/>
                 </button>
             </div>
@@ -74,7 +74,7 @@ const AppLayout = ({ children, userRole }) => {
                         key={item.to}
                         to={item.to} 
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={({ isActive }) => `flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+                        className={({ isActive }) => `flex items-center gap-3 px-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
                     >
                         {React.cloneElement(item.icon, { size: 18 })}
                         <span>{item.label}</span>
@@ -85,7 +85,7 @@ const AppLayout = ({ children, userRole }) => {
             <div className="p-5 mt-auto border-t border-slate-800/50">
                 <button 
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
+                    className="w-full flex items-center gap-3 px-5 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20"
                 >
                     <LogOut size={18}/>
                     <span>Sign Out</span>
@@ -97,13 +97,13 @@ const AppLayout = ({ children, userRole }) => {
       {/* DESKTOP SIDEBAR */}
       <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out self-start`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative`}>
-          <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0">
-            <ShieldCheck size={22}/>
+          <div className="w-10 h-10 flex items-center justify-center shrink-0">
+            <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
               <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
-              <p className="text-[8px] font-black text-slate-600 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
                 {isAdmin ? 'ADMIN' : 'STAFF'}
               </p>
             </div>
@@ -122,7 +122,7 @@ const AppLayout = ({ children, userRole }) => {
             <NavLink 
               key={item.to}
               to={item.to} 
-              className={({ isActive }) => `flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+              className={({ isActive }) => `flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${isActive ? 'bg-green-500 text-slate-950 shadow-lg shadow-green-500/10' : 'text-slate-300 hover:text-white hover:bg-white/5'}`}
               title={item.label}
             >
               {React.cloneElement(item.icon, { size: 18, className: 'shrink-0' })}
@@ -134,7 +134,7 @@ const AppLayout = ({ children, userRole }) => {
         <div className="p-5 mt-auto">
           <button 
             onClick={handleSignOut}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 border border-transparent hover:border-red-500/20`}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-5'} py-3.5 rounded-xl text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 transition-all active:scale-95 border border-transparent hover:border-red-500/20`}
             title="Sign Out Session"
           >
             <LogOut size={18} className="shrink-0"/>
@@ -153,15 +153,15 @@ const AppLayout = ({ children, userRole }) => {
         <footer className="w-full p-8 border-t border-slate-800/50 mt-auto bg-slate-900/30 backdrop-blur-xl">
           <div className="flex flex-col items-center gap-4 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-                <ShieldCheck size={16}/>
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain shadow-lg" />
               </div>
-              <span className="text-[12px] font-black uppercase tracking-[0.4em] text-slate-200">
+              <span className="text-sm font-black uppercase tracking-[0.4em] text-white">
                 IUBPC Gatekeeper
               </span>
             </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              powered by IUBPC Dev Team — Developer: <span className="text-green-500/80">Zaid Fahad</span>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              powered by IUBPC Dev Team — Developer: <span className="text-green-400 font-black">Zaid Fahad</span>
             </p>
           </div>
         </footer>

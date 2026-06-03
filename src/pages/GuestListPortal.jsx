@@ -14,7 +14,7 @@ const GuestListPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', email: '', sid: '', img: '' });
+  const [form, setForm] = useState({ name: '', email: '', sid: '', img: '', phone: '', ref: '' });
 
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
@@ -24,8 +24,10 @@ const GuestListPortal = () => {
   }, [eventId]);
 
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
       const { data: eventData, error: eError } = await fetchEventById(eventId);
+      if (!isMounted) return;
       if (eError || !eventData) {
         navigate('/');
         return;
@@ -34,6 +36,9 @@ const GuestListPortal = () => {
       await fetchAttendees();
     };
     loadData();
+    return () => {
+      isMounted = false;
+    };
   }, [eventId, navigate, fetchAttendees]);
 
   const handleManualAdd = async (e) => {
@@ -50,8 +55,16 @@ const GuestListPortal = () => {
       return;
     }
 
-    const { error } = await insertAttendee({ event_id: eventId, full_name: form.name, email: form.email, student_id: form.sid, avatar_url: form.img || null });
-    if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'' }); fetchAttendees(); }
+    const { error } = await insertAttendee({ 
+      event_id: eventId, 
+      full_name: form.name, 
+      email: form.email, 
+      student_id: form.sid, 
+      avatar_url: form.img || null,
+      phone: form.phone,
+      reference: form.ref 
+    });
+    if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'', phone:'', ref:'' }); fetchAttendees(); }
     else alert(error.message);
   };
 
@@ -59,7 +72,15 @@ const GuestListPortal = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     Papa.parse(file, { header: true, skipEmptyLines: true, complete: async (res) => {
-      const data = res.data.filter(r => r.student_id).map(r => ({ event_id: eventId, full_name: r.name || 'Anonymous', email: r.email || '', student_id: r.student_id, avatar_url: r.image_link || null }));
+      const data = res.data.filter(r => r.student_id).map(r => ({ 
+        event_id: eventId, 
+        full_name: r.name || 'Anonymous', 
+        email: r.email || '', 
+        student_id: r.student_id, 
+        avatar_url: r.image_link || null,
+        phone: r.phone || null,
+        reference: r.ref || r.reference || null
+      }));
       const { error } = await bulkInsertAttendees(data);
       if (!error) fetchAttendees();
       else alert(error.message);
@@ -68,7 +89,7 @@ const GuestListPortal = () => {
 
   const downloadTemplate = () => {
     try {
-      const csvData = "name,email,student_id,image_link\nSample Name,sample@iub.edu.bd,2120000,https://i.pravatar.cc/150";
+      const csvData = "name,email,student_id,image_link,phone,ref\nSample Name,sample@iub.edu.bd,2120000,https://i.pravatar.cc/150,01700000000,N/A";
       const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -121,7 +142,7 @@ const GuestListPortal = () => {
             <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search attendees..." />
           </div>
           <div className="flex items-center gap-4 italic">
-            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-600 hover:text-white uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={12}/> Get Template</button>
+            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-200 hover:text-green-400 uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={20}/> Get Template</button>
             <div className="h-3 w-px bg-slate-800"></div>
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Attendees Listed</span>
           </div>
@@ -139,7 +160,12 @@ const GuestListPortal = () => {
                 <div key={row.id} className="bg-slate-900 border border-slate-800 p-6 rounded-[2.8rem] flex items-center justify-between group hover:border-slate-700 transition-all shadow-xl relative overflow-hidden italic">
                   <div className="flex items-center gap-5 relative z-10">
                     <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-16 h-16 rounded-3xl border-2 border-slate-950 object-cover bg-slate-800 shadow-md" />
-                    <div><p className="text-base font-black text-white italic leading-none truncate max-w-[150px] uppercase tracking-tighter">{row.full_name}</p><p className="text-[10px] font-bold text-slate-600 uppercase mt-2 tracking-tight italic">ID: {row.student_id}</p></div>
+                    <div>
+                        <p className="text-base font-black text-white italic leading-none truncate max-w-[150px] uppercase tracking-tighter">{row.full_name}</p>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase mt-2 tracking-tight italic">ID: {row.student_id}</p>
+                        {row.phone && <p className="text-[10px] font-bold text-green-500 uppercase tracking-tight italic mt-0.5">{row.phone}</p>}
+                        {row.reference && <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest mt-1 italic">Ref: {row.reference}</p>}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-1.5 items-end relative z-10 opacity-30 group-hover:opacity-100 transition-opacity">
                     <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${row.checked_in_1 ? 'bg-green-500 shadow-green-500/20' : 'bg-slate-800 animate-pulse'}`}></div>
@@ -160,7 +186,7 @@ const GuestListPortal = () => {
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 2</th>
+                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Gift</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -169,13 +195,17 @@ const GuestListPortal = () => {
                         <td className="p-6">
                           <div className="flex items-center gap-4">
                             <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-950 object-cover bg-slate-800" />
-                            <span className="text-sm font-black text-white uppercase tracking-tight">{row.full_name}</span>
+                            <div>
+                                <span className="text-sm font-black text-white uppercase tracking-tight block">{row.full_name}</span>
+                                {row.reference && <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest mt-1 block">Ref: {row.reference}</span>}
+                            </div>
                           </div>
                         </td>
                         <td className="p-6">
                           <div className="space-y-1">
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
-                            <p className="text-[9px] font-medium text-slate-600 lowercase">{row.email}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
+                            {row.phone && <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider">{row.phone}</p>}
+                            <p className="text-xs font-medium text-slate-400 lowercase">{row.email}</p>
                           </div>
                         </td>
                         <td className="p-6 text-center">
@@ -205,6 +235,8 @@ const GuestListPortal = () => {
                     <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="FULL NAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="EMAIL ADDRESS" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.sid} onChange={e => setForm({...form, sid: e.target.value})} placeholder="STUDENT ID" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
+                    <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="PHONE NUMBER" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
+                    <input value={form.ref} onChange={e => setForm({...form, ref: e.target.value})} placeholder="REFERENCE (OPTIONAL)" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                     <input value={form.img} onChange={e => setForm({...form, img: e.target.value})} placeholder="IMAGE URL" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                 </div>
                 <button className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic">CONFIRM ATTENDEE</button>

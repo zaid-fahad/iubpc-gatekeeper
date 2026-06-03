@@ -149,16 +149,16 @@ const OperatorManifest = () => {
       {/* CONTROLS */}
       <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl flex flex-col md:flex-row gap-4 justify-between items-center shadow-xl">
         <div className="relative w-full md:max-w-xs group">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-blue-500 transition-colors" size={16} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={16} />
           <input 
             value={searchTerm} 
             onChange={e => setSearchTerm(e.target.value)} 
-            className="w-full bg-slate-950 border border-slate-800 p-3 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none placeholder:text-slate-800 focus:ring-1 focus:ring-blue-500/30 transition-all" 
+            className="w-full bg-slate-950 border border-slate-800 p-3 pl-10 rounded-xl text-xs font-bold text-white shadow-inner outline-none placeholder:text-slate-600 focus:ring-1 focus:ring-blue-500/30 transition-all" 
             placeholder="Search staff members..." 
           />
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2 text-[9px] font-black text-slate-600 uppercase tracking-widest leading-none">
+          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
             <Filter size={12}/> Filter:
           </div>
           <div className="flex gap-2 flex-1 md:flex-none">
@@ -166,7 +166,7 @@ const OperatorManifest = () => {
               <button 
                 key={role}
                 onClick={() => setRoleFilter(role)}
-                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border ${roleFilter === role ? 'bg-blue-500 text-slate-950 border-blue-400' : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-white'}`}
+                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${roleFilter === role ? 'bg-blue-500 text-slate-950 border-blue-400' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'}`}
               >
                 {role}
               </button>
@@ -184,21 +184,21 @@ const OperatorManifest = () => {
               </div>
               <div>
                 <div className="flex items-center gap-3">
-                    <h4 className={`text-base font-black uppercase tracking-tight ${!u.is_active ? 'text-slate-600' : 'text-white'} italic`}>{u.full_name || 'UNKNOWN STAFF'}</h4>
+                    <h4 className={`text-base font-black uppercase tracking-tight ${!u.is_active ? 'text-slate-500' : 'text-white'} `}>{u.full_name || 'UNKNOWN STAFF'}</h4>
                     <select 
                         value={u.role} 
                         onChange={(e) => handleRoleChange(u.email, e.target.value)}
                         disabled={processingId === u.email}
-                        className={`text-[7px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest border bg-transparent outline-none cursor-pointer transition-all ${u.role === 'admin' ? 'text-green-500 border-green-500/20 hover:bg-green-500/10' : 'text-blue-500 border-blue-500/20 hover:bg-blue-500/10'}`}
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest border bg-transparent outline-none cursor-pointer transition-all ${u.role === 'admin' ? 'text-green-500 border-green-500/20 hover:bg-green-500/10' : 'text-blue-500 border-blue-500/20 hover:bg-blue-500/10'}`}
                     >
                         <option value="admin" className="bg-slate-900 text-green-500">ADMIN</option>
                         <option value="volunteer" className="bg-slate-900 text-blue-500">VOLUNTEER</option>
                     </select>
                 </div>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className={`text-[8px] font-black uppercase tracking-tight ${!u.is_active ? 'text-slate-700' : 'text-slate-500'}`}>{u.email}</span>
+                  <span className={`text-[10px] font-black uppercase tracking-tight ${!u.is_active ? 'text-slate-600' : 'text-slate-400'}`}>{u.email}</span>
                   <span className="w-1 h-1 bg-slate-800 rounded-full"></span>
-                  <span className={`text-[8px] font-black uppercase tracking-widest ${u.is_active ? 'text-green-500' : 'text-red-500'}`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${u.is_active ? 'text-green-500' : 'text-red-500'}`}>
                     {u.is_active ? 'ACTIVE' : 'INACTIVE'}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ const OperatorManifest = () => {
                 onClick={() => handleResetPassword(u.email)} 
                 title="Reset Password"
                 disabled={processingId === u.email}
-                className={`p-2 rounded-lg border border-slate-800 text-slate-500 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-90 bg-slate-950 ${processingId === u.email ? 'animate-pulse' : ''}`}
+                className={`p-2 rounded-lg border border-slate-800 text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-90 bg-slate-950 ${processingId === u.email ? 'animate-pulse' : ''}`}
               >
                 {processingId === u.email ? <RefreshCw size={20} className="animate-spin" /> : <Key size={20}/>}
               </button>
@@ -223,7 +223,7 @@ const OperatorManifest = () => {
               <button 
                 onClick={() => handleDeleteUser(u.email)} 
                 title="Remove Staff Member"
-                className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-600 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-90 shadow-xl"
+                className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-90 shadow-xl"
               >
                 <Trash2 size={20}/>
               </button>
@@ -233,12 +233,12 @@ const OperatorManifest = () => {
         ))}
         
         {filteredUsers.length === 0 && !loading && (
-          <div className="p-20 border-2 border-dashed border-slate-900 rounded-[2.5rem] text-center">
-            <ShieldAlert size={48} className="mx-auto text-slate-900 mb-4" />
-            <p className="text-slate-700 font-black uppercase tracking-[0.2em] text-[10px]">No staff members found matching your search.</p>
+          <div className="p-20 border-2 border-dashed border-slate-800 rounded-[2.5rem] text-center">
+            <ShieldAlert size={48} className="mx-auto text-slate-800 mb-4" />
+            <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-sm">No staff members found matching your search.</p>
             <button 
                 onClick={() => { setSearchTerm(""); setRoleFilter("all"); }}
-                className="mt-4 text-[9px] font-black text-blue-500 uppercase tracking-widest hover:text-white transition-all"
+                className="mt-4 text-xs font-black text-blue-500 uppercase tracking-widest hover:text-white transition-all"
             >
                 Reset Search Parameters
             </button>

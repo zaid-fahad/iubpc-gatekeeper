@@ -52,6 +52,76 @@ const GateControl = () => {
     loadData();
   }, [eventId, navigate]);
 
+  useEffect(() => {
+    if (!eventId) return;
+
+    const channel = supabase
+      .channel(`gate_control_${eventId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendees',
+          filter: `event_id=eq.${eventId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setAttendees((prev) => {
+              // Prevent duplicates
+              if (prev.find(a => a.id === payload.new.id)) return prev;
+              return [payload.new, ...prev];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setAttendees((prev) => 
+              prev.map(a => a.id === payload.new.id ? { ...a, ...payload.new } : a)
+            );
+            // Update selected member if they are the one modified
+            setMember((prevMember) => {
+              if (prevMember && prevMember.id === payload.new.id) {
+                return { ...prevMember, ...payload.new };
+              }
+              return prevMember;
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'entry_logs',
+          filter: `event_id=eq.${eventId}`
+        },
+        async (payload) => {
+          // Fetch full log details to get attendee name mapping
+          const { data: fullLog } = await supabase
+            .from('entry_logs')
+            .select('*, attendee:attendees(full_name, student_id)')
+            .eq('id', payload.new.id)
+            .single();
+
+          if (fullLog) {
+            setGlobalHistory((prev) => [fullLog, ...prev]);
+            
+            // Update attendee history if the selected member matches
+            setMember((prevMember) => {
+              if (prevMember && prevMember.id === payload.new.attendee_id) {
+                setAttendeeHistory((prevHist) => [fullLog, ...prevHist]);
+              }
+              return prevMember;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [eventId]);
+
   const filtered = attendees.filter(a => 
     a.full_name?.toLowerCase().includes(searchInput.toLowerCase()) || 
     a.student_id?.includes(searchInput) ||

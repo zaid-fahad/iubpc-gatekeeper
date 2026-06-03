@@ -24,8 +24,10 @@ const GuestListPortal = () => {
   }, [eventId]);
 
   useEffect(() => {
+    let isMounted = true;
     const loadData = async () => {
       const { data: eventData, error: eError } = await fetchEventById(eventId);
+      if (!isMounted) return;
       if (eError || !eventData) {
         navigate('/');
         return;
@@ -34,6 +36,9 @@ const GuestListPortal = () => {
       await fetchAttendees();
     };
     loadData();
+    return () => {
+      isMounted = false;
+    };
   }, [eventId, navigate, fetchAttendees]);
 
   const handleManualAdd = async (e) => {

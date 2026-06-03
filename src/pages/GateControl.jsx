@@ -6,6 +6,8 @@ import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLo
 import { getSession } from '../api/auth';
 import GateActBtn from '../components/GateActBtn';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { supabase } from '../lib/supabase';
+
 
 const GateControl = () => {
   const { id: eventId } = useParams();
@@ -30,8 +32,12 @@ const GateControl = () => {
   const [pendingAttendee, setPendingAttendee] = useState(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadData = async () => {
       const { data: eventData, error: eError } = await fetchEventById(eventId);
+      if (!isMounted) return;
+      
       if (eError || !eventData) {
         navigate('/');
         return;
@@ -39,17 +45,22 @@ const GateControl = () => {
       setEvent(eventData);
 
       const { data: { session } } = await getSession();
-      if (session?.user?.email) setAdminEmail(session.user.email);
+      if (isMounted && session?.user?.email) setAdminEmail(session.user.email);
 
       const { data: attendeesData } = await fetchEventAttendees(eventId);
-      setAttendees(attendeesData || []);
+      if (isMounted) setAttendees(attendeesData || []);
 
       const { data: logsData } = await fetchEventLogs(eventId);
-      setGlobalHistory(logsData || []);
-
-      setLoading(false);
+      if (isMounted) {
+        setGlobalHistory(logsData || []);
+        setLoading(false);
+      }
     };
     loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [eventId, navigate]);
 
   useEffect(() => {

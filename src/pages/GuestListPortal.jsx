@@ -14,7 +14,7 @@ const GuestListPortal = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', email: '', sid: '', img: '' });
+  const [form, setForm] = useState({ name: '', email: '', sid: '', img: '', phone: '', ref: '' });
 
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
@@ -50,8 +50,16 @@ const GuestListPortal = () => {
       return;
     }
 
-    const { error } = await insertAttendee({ event_id: eventId, full_name: form.name, email: form.email, student_id: form.sid, avatar_url: form.img || null });
-    if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'' }); fetchAttendees(); }
+    const { error } = await insertAttendee({ 
+      event_id: eventId, 
+      full_name: form.name, 
+      email: form.email, 
+      student_id: form.sid, 
+      avatar_url: form.img || null,
+      phone: form.phone,
+      reference: form.ref 
+    });
+    if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'', phone:'', ref:'' }); fetchAttendees(); }
     else alert(error.message);
   };
 
@@ -59,7 +67,15 @@ const GuestListPortal = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     Papa.parse(file, { header: true, skipEmptyLines: true, complete: async (res) => {
-      const data = res.data.filter(r => r.student_id).map(r => ({ event_id: eventId, full_name: r.name || 'Anonymous', email: r.email || '', student_id: r.student_id, avatar_url: r.image_link || null }));
+      const data = res.data.filter(r => r.student_id).map(r => ({ 
+        event_id: eventId, 
+        full_name: r.name || 'Anonymous', 
+        email: r.email || '', 
+        student_id: r.student_id, 
+        avatar_url: r.image_link || null,
+        phone: r.phone || null,
+        reference: r.ref || r.reference || null
+      }));
       const { error } = await bulkInsertAttendees(data);
       if (!error) fetchAttendees();
       else alert(error.message);
@@ -68,7 +84,7 @@ const GuestListPortal = () => {
 
   const downloadTemplate = () => {
     try {
-      const csvData = "name,email,student_id,image_link\nSample Name,sample@iub.edu.bd,2120000,https://i.pravatar.cc/150";
+      const csvData = "name,email,student_id,image_link,phone,ref\nSample Name,sample@iub.edu.bd,2120000,https://i.pravatar.cc/150,01700000000,N/A";
       const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

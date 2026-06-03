@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchEvents as fetchEventsApi } from '../api/events';
 import { fetchAllUsers } from '../api/auth';
 import StatCard from '../components/StatCard';
-import { Calendar, Zap, ArrowRight, ShieldCheck, Users } from 'lucide-react';
+import { Calendar, Zap, ArrowRight, Users } from 'lucide-react';
 
 const DashboardOverview = ({ userRole }) => {
   const [events, setEvents] = useState([]);

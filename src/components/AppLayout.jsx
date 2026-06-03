@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { signOut } from '../api/auth';
 import { 
-  ShieldCheck, LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
+  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
 } from 'lucide-react';
 
 const AppLayout = ({ children, userRole }) => {
@@ -32,8 +32,8 @@ const AppLayout = ({ children, userRole }) => {
             <button onClick={toggleMobileMenu} className="p-2 -ml-2 text-slate-400 hover:text-white transition-all">
                 <Menu size={20}/>
             </button>
-            <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950 shadow-lg shadow-green-500/20">
-                <ShieldCheck size={18}/>
+            <div className="w-8 h-8 flex items-center justify-center">
+                <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-base font-black tracking-tighter text-white uppercase italic">IUBPC</h1>
         </div>
@@ -53,8 +53,8 @@ const AppLayout = ({ children, userRole }) => {
         <aside className={`absolute inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 shadow-2xl flex flex-col transition-transform duration-500 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-slate-950">
-                        <ShieldCheck size={18}/>
+                    <div className="w-8 h-8 flex items-center justify-center">
+                        <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
                     </div>
                     <div>
                         <h1 className="text-lg font-black tracking-tighter text-white uppercase leading-none italic">IUBPC</h1>
@@ -97,8 +97,8 @@ const AppLayout = ({ children, userRole }) => {
       {/* DESKTOP SIDEBAR */}
       <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out self-start`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative`}>
-          <div className="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center text-slate-950 shadow-[0_0_15px_rgba(34,197,94,0.3)] shrink-0">
-            <ShieldCheck size={22}/>
+          <div className="w-10 h-10 flex items-center justify-center shrink-0">
+            <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
@@ -153,8 +153,8 @@ const AppLayout = ({ children, userRole }) => {
         <footer className="w-full p-8 border-t border-slate-800/50 mt-auto bg-slate-900/30 backdrop-blur-xl">
           <div className="flex flex-col items-center gap-4 transition-all">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-green-500/10 rounded-xl flex items-center justify-center text-green-500 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.1)]">
-                <ShieldCheck size={16}/>
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain shadow-lg" />
               </div>
               <span className="text-sm font-black uppercase tracking-[0.4em] text-white">
                 IUBPC Gatekeeper

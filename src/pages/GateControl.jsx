@@ -326,7 +326,7 @@ const GateControl = () => {
                 <div className="flex gap-1.5">
                   <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_1 ? 'bg-green-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Checked In"></div>
                   <div className={`w-2 h-2 rounded-full border transition-all ${m.token_given ? 'bg-purple-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Food Token"></div>
-                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_2 ? 'bg-blue-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Check-in 2"></div>
+                  <div className={`w-2 h-2 rounded-full border transition-all ${m.checked_in_2 ? 'bg-blue-500 border-slate-950' : 'bg-slate-800/50 border-transparent'}`} title="Gift"></div>
                 </div>
               </button>
             )) : <div className="text-center py-10 opacity-20 uppercase text-[10px] font-black tracking-widest">No Matches Found</div>}
@@ -420,7 +420,7 @@ const GateControl = () => {
                 <div className="grid grid-cols-3 gap-3">
                   <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
                   <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
-                  <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
+                  <GateActBtn label="Gift" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
                 </div>
 
                 <div className="space-y-3">
@@ -478,7 +478,7 @@ const GateControl = () => {
                     <div className="space-y-2.5">
                         <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
                         <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
-                        <GateActBtn label="Check-in 2" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
+                        <GateActBtn label="Gift" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
                     </div>
 
                     <div className="space-y-3 pt-4">

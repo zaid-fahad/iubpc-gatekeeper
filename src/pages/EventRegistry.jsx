@@ -3,9 +3,175 @@ import { useNavigate } from 'react-router-dom';
 import { fetchEvents as fetchEventsApi, createEvent } from '../api/events';
 import { 
   Plus, Calendar, BarChart3, Users, Search, Filter, 
-  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye, ToggleLeft, ToggleRight
+  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
+
+// Small & Compact Custom DatePicker Component
+const CompactDatePicker = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedDateObj = useMemo(() => {
+    if (!value) return new Date();
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return new Date();
+  }, [value]);
+
+  const [viewDate, setViewDate] = useState(selectedDateObj);
+
+  useEffect(() => {
+    setViewDate(selectedDateObj);
+  }, [selectedDateObj]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+  };
+
+  const handleSelectDay = (day) => {
+    const year = viewDate.getFullYear();
+    const month = String(viewDate.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    onChange(`${year}-${month}-${dayStr}`);
+    setIsOpen(false);
+  };
+
+  const setOffsetDate = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    onChange(`${year}-${month}-${dayStr}`);
+    setViewDate(d);
+    setIsOpen(false);
+  };
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+
+  const formattedDisplay = useMemo(() => {
+    return selectedDateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [selectedDateObj]);
+
+  return (
+    <div className="relative space-y-1.5">
+      <div className="flex items-center gap-2">
+        {/* SMALL DATEPICKER BUTTON */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-blue-500/40 text-slate-200 hover:text-white rounded-lg text-xs font-medium flex items-center gap-2 transition-all min-h-[36px]"
+        >
+          <Calendar size={13} className="text-blue-500" />
+          <span>{formattedDisplay}</span>
+        </button>
+
+        {/* NATIVE INPUT (COMPACT) */}
+        <input 
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-blue-500 min-h-[36px] w-32 cursor-pointer font-mono"
+        />
+      </div>
+
+      {/* SMALL PRESET BUTTONS */}
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-slate-500">Preset:</span>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(0)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(1)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          Tomorrow
+        </button>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(7)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          +7d
+        </button>
+      </div>
+
+      {/* COMPACT POPOVER CALENDAR */}
+      {isOpen && (
+        <div className="absolute top-10 left-0 z-[250] bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl space-y-2 w-60 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <button 
+              type="button" 
+              onClick={handlePrevMonth}
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-white">
+              {monthNames[month]} {year}
+            </span>
+            <button 
+              type="button" 
+              onClick={handleNextMonth}
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-medium text-slate-500">
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+            {Array.from({ length: firstDayIndex }).map((_, i) => (
+              <span key={`empty-${i}`} className="p-1"></span>
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const isSelected = 
+                selectedDateObj.getFullYear() === year && 
+                selectedDateObj.getMonth() === month && 
+                selectedDateObj.getDate() === dayNum;
+
+              return (
+                <button
+                  key={dayNum}
+                  type="button"
+                  onClick={() => handleSelectDay(dayNum)}
+                  className={`p-1 rounded text-xs transition-all ${isSelected ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800'}`}
+                >
+                  {dayNum}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const EventRegistry = ({ userRole }) => {
   const [events, setEvents] = useState([]);
@@ -351,10 +517,10 @@ const EventRegistry = ({ userRole }) => {
         </div>
       )}
 
-      {/* UPGRADED CREATE EVENT MODAL WITH LIVE PREVIEW */}
+      {/* UPGRADED CREATE EVENT MODAL WITH SMALL DATEPICKER BUTTON */}
       {showEventModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-lg space-y-5 shadow-2xl text-left flex flex-col max-h-[90vh] overflow-y-auto">
+          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-4 shadow-2xl text-left flex flex-col max-h-[90vh] overflow-y-auto">
             
             {/* MODAL HEADER */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
@@ -363,7 +529,7 @@ const EventRegistry = ({ userRole }) => {
                   <Calendar size={18} className="text-blue-500" />
                   Create New Event
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Set up event portal details and gate status.</p>
+                <p className="text-xs text-slate-400 mt-0.5">Set up event details and gate status.</p>
               </div>
               <button 
                 type="button"
@@ -375,9 +541,9 @@ const EventRegistry = ({ userRole }) => {
             </div>
 
             {/* FORM INPUTS */}
-            <div className="space-y-4 text-xs">
+            <div className="space-y-3.5 text-xs">
               {/* EVENT NAME */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
                   <Tag size={13} className="text-slate-400" />
                   Event Name
@@ -387,87 +553,71 @@ const EventRegistry = ({ userRole }) => {
                   onChange={e => setNewEvent({...newEvent, title: e.target.value})} 
                   placeholder="e.g. Annual Programming Contest 2026" 
                   required 
-                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
+                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[40px]" 
                 />
               </div>
 
-              {/* EVENT DATE */}
-              <div className="space-y-1.5">
+              {/* SMALL COMPACT DATE PICKER */}
+              <div className="space-y-1">
                 <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
                   <Calendar size={13} className="text-slate-400" />
-                  Event Date
+                  Select Event Date
                 </label>
-                <input 
-                  type="date" 
+                <CompactDatePicker 
                   value={newEvent.date} 
-                  onChange={e => setNewEvent({...newEvent, date: e.target.value})} 
-                  required 
-                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
+                  onChange={(newDate) => setNewEvent({ ...newEvent, date: newDate })} 
                 />
               </div>
 
               {/* INITIAL GATE STATUS TOGGLE */}
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="text-xs text-slate-300 font-medium">Initial Gate Status</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setNewEvent({...newEvent, is_active: true})}
-                    className={`p-3 rounded-xl border text-left transition-all ${newEvent.is_active ? 'bg-green-500/10 border-green-500/40 text-green-400 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                    className={`p-2.5 rounded-lg border text-left transition-all ${newEvent.is_active ? 'bg-green-500/10 border-green-500/40 text-green-400 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs">Active Gate</span>
                       <span className="w-2 h-2 rounded-full bg-green-500"></span>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-normal">Check-in portal open immediately.</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Check-in open immediately</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setNewEvent({...newEvent, is_active: false})}
-                    className={`p-3 rounded-xl border text-left transition-all ${!newEvent.is_active ? 'bg-slate-800 border-slate-700 text-white font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                    className={`p-2.5 rounded-lg border text-left transition-all ${!newEvent.is_active ? 'bg-slate-800 border-slate-700 text-white font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
                   >
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between mb-0.5">
                       <span className="text-xs">Offline / Draft</span>
                       <span className="w-2 h-2 rounded-full bg-slate-500"></span>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-normal">Gate portal kept inactive for now.</p>
+                    <p className="text-[10px] text-slate-400 font-normal">Gate kept inactive for now</p>
                   </button>
                 </div>
               </div>
 
-              {/* LIVE CARD PREVIEW SECTION */}
-              <div className="pt-2 border-t border-slate-800 space-y-2">
+              {/* COMPACT LIVE PREVIEW */}
+              <div className="pt-2 border-t border-slate-800 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-slate-400 text-xs">
                   <Eye size={13} className="text-blue-500" />
-                  <span className="font-medium">Live Event Card Preview</span>
+                  <span className="font-medium">Live Card Preview</span>
                 </div>
-                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
+                <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className={`w-2 h-2 rounded-full ${newEvent.is_active ? 'bg-green-500' : 'bg-slate-500'}`}></span>
-                      <span className={`text-[11px] ${newEvent.is_active ? 'text-green-400 font-medium' : 'text-slate-400'}`}>
+                      <span className={newEvent.is_active ? 'text-green-400 font-medium' : 'text-slate-400'}>
                         {newEvent.is_active ? 'Active Gate' : 'Offline'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-slate-500 font-mono">PREVIEW</span>
+                    <span className="text-slate-500 font-mono text-[9px]">{newEvent.date}</span>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white">
-                      {newEvent.title.trim() || 'Untitled Event'}
-                    </h4>
-                    <p className="text-xs text-slate-400 font-mono mt-0.5">{newEvent.date}</p>
-                  </div>
-                  <div className="pt-1">
-                    <button 
-                      type="button"
-                      disabled={!newEvent.is_active}
-                      className="w-full py-2 px-3 bg-green-600 text-white rounded-lg text-xs font-medium disabled:opacity-40 disabled:bg-slate-800 disabled:text-slate-500 flex items-center justify-center gap-1.5"
-                    >
-                      <span>Start Check-In Gate</span>
-                      <ArrowRight size={12} />
-                    </button>
-                  </div>
+                  <h4 className="text-xs font-bold text-white truncate">
+                    {newEvent.title.trim() || 'Untitled Event'}
+                  </h4>
                 </div>
               </div>
             </div>
@@ -477,13 +627,13 @@ const EventRegistry = ({ userRole }) => {
               <button 
                 type="button"
                 onClick={() => setShowEventModal(false)}
-                className="px-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all min-h-[44px]"
+                className="px-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all min-h-[40px]"
               >
                 Cancel
               </button>
               <button 
                 disabled={processing}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition-all shadow-md flex items-center justify-center gap-1.5 min-h-[44px]"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition-all shadow-md flex items-center justify-center gap-1.5 min-h-[40px]"
               >
                 {processing ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={14} />}
                 <span>Publish Event</span>

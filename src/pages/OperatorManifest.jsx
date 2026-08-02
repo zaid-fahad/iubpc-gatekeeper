@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchAllUsers, addUser, updateUser, removeUser, fetchUnassignedUsers, resetPassword } from '../api/auth';
 import { 
   ShieldCheck, Users, UserPlus, Trash2, ToggleLeft, ToggleRight, Search, Filter, 
-  ShieldAlert, UserSearch, Key, RefreshCw, Check, Plus, UserCheck, ChevronDown, ChevronUp, AlertCircle
+  ShieldAlert, UserSearch, Key, RefreshCw, Plus, UserCheck, ChevronUp, Settings, X, Shield, Lock, Sliders, CheckCircle2, UserX
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 
@@ -20,6 +20,10 @@ const OperatorManifest = () => {
   // Toggle for manual inline add form
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [newUser, setNewUser] = useState({ full_name: '', email: '', role: 'volunteer' });
+
+  // Selected staff member for Actions Modal
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'danger'
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -48,6 +52,16 @@ const OperatorManifest = () => {
     fetchUsers();
     getUnassigned();
   }, [fetchUsers, getUnassigned]);
+
+  // Keep selectedStaff synced with updated users list
+  useEffect(() => {
+    if (selectedStaff) {
+      const updated = users.find(u => u.email === selectedStaff.email);
+      if (updated) {
+        setSelectedStaff(updated);
+      }
+    }
+  }, [users]);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -81,15 +95,19 @@ const OperatorManifest = () => {
   };
 
   const handleToggleActive = async (user) => {
+    setProcessingId(user.email);
     const { error } = await updateUser(user.email, { is_active: !user.is_active });
-    if (!error) fetchUsers();
+    if (!error) {
+      await fetchUsers();
+    }
+    setProcessingId(null);
   };
 
   const handleRoleChange = async (email, newRole) => {
     setProcessingId(email);
     const { error } = await updateUser(email, { role: newRole });
     if (!error) {
-        fetchUsers();
+        await fetchUsers();
     } else {
         alert("Role Update Failure: " + error.message);
     }
@@ -110,9 +128,16 @@ const OperatorManifest = () => {
   };
 
   const handleDeleteUser = async (email) => {
-    if (window.confirm("Remove this staff member profile?")) {
+    if (window.confirm(`Are you sure you want to remove ${email} from staff?`)) {
+        setProcessingId(email);
         const { error } = await removeUser(email);
-        if (!error) fetchUsers();
+        if (!error) {
+            setSelectedStaff(null);
+            await fetchUsers();
+        } else {
+            alert("Delete Failure: " + error.message);
+        }
+        setProcessingId(null);
     }
   };
 
@@ -380,13 +405,11 @@ const OperatorManifest = () => {
                 <th className="p-4">Email Address</th>
                 <th className="p-4">Assigned Role</th>
                 <th className="p-4">Access Status</th>
-                <th className="p-4 text-right">Actions</th>
+                <th className="p-4 text-right">Management</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-xs font-bold">
               {filteredUsers.map((u) => {
-                const isProcessing = processingId === u.email;
-
                 return (
                   <tr key={u.id || u.email} className={`hover:bg-slate-800/40 transition-colors group ${!u.is_active ? 'opacity-60 bg-slate-950/20' : ''}`}>
                     <td className="p-4">
@@ -398,23 +421,17 @@ const OperatorManifest = () => {
                           <span className={`font-black uppercase tracking-tight block ${!u.is_active ? 'text-slate-500 line-through' : 'text-white'}`}>
                             {u.full_name || 'STAFF MEMBER'}
                           </span>
-                          <span className={`text-[9px] font-black uppercase tracking-widest ${u.role === 'admin' ? 'text-green-500' : 'text-blue-500'}`}>
-                            {u.role}
+                          <span className="text-[9px] font-mono text-slate-500 uppercase tracking-widest">
+                            ID: {u.id ? u.id.slice(0, 8) : 'ACTIVE'}
                           </span>
                         </div>
                       </div>
                     </td>
                     <td className="p-4 text-slate-300 font-mono text-xs">{u.email}</td>
                     <td className="p-4">
-                      <select 
-                        value={u.role} 
-                        onChange={(e) => handleRoleChange(u.email, e.target.value)}
-                        disabled={isProcessing}
-                        className={`text-[10px] px-2.5 py-1 rounded-lg font-black uppercase tracking-widest border bg-slate-950 outline-none cursor-pointer transition-all ${u.role === 'admin' ? 'text-green-500 border-green-500/30 focus:ring-green-500' : 'text-blue-500 border-blue-500/30 focus:ring-blue-500'}`}
-                      >
-                        <option value="admin" className="bg-slate-900 text-green-500">ADMINISTRATOR</option>
-                        <option value="volunteer" className="bg-slate-900 text-blue-500">VOLUNTEER</option>
-                      </select>
+                      <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${u.role === 'admin' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                        {u.role === 'admin' ? 'ADMINISTRATOR' : 'VOLUNTEER'}
+                      </span>
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -425,30 +442,13 @@ const OperatorManifest = () => {
                       </div>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button 
-                          onClick={() => handleResetPassword(u.email)} 
-                          title="Send Reset Password Link"
-                          disabled={isProcessing}
-                          className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-500/30 hover:bg-slate-900 transition-all active:scale-90 bg-slate-950"
-                        >
-                          {isProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Key size={14}/>}
-                        </button>
-                        <button 
-                          onClick={() => handleToggleActive(u)} 
-                          title={u.is_active ? "Revoke Access" : "Grant Access"}
-                          className={`p-2 rounded-lg border transition-all active:scale-90 ${u.is_active ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
-                        >
-                          {u.is_active ? <ToggleRight size={16}/> : <ToggleLeft size={16}/>}
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(u.email)} 
-                          title="Remove Staff Profile"
-                          className="p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-400 hover:text-red-400 hover:border-red-500/30 hover:bg-slate-900 transition-all active:scale-90 shadow-xl"
-                        >
-                          <Trash2 size={14}/>
-                        </button>
-                      </div>
+                      <button 
+                        onClick={() => { setSelectedStaff(u); setActiveTab('general'); }}
+                        className="px-4 py-2 bg-slate-950 border border-slate-800 hover:border-blue-500/40 text-slate-300 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all inline-flex items-center gap-2 active:scale-95 shadow-lg group-hover:border-slate-700"
+                      >
+                        <Settings size={14} className="text-blue-500 group-hover:rotate-45 transition-transform duration-300" />
+                        Manage Staff
+                      </button>
                     </td>
                   </tr>
                 );
@@ -470,9 +470,179 @@ const OperatorManifest = () => {
           )}
         </div>
       </section>
+
+      {/* STAFF ACTIONS MANAGEMENT MODAL */}
+      {selectedStaff && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="relative bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl text-left overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* GLOW ACCENT HEADER */}
+            <div className={`p-6 border-b border-slate-800 flex items-center justify-between relative overflow-hidden ${selectedStaff.role === 'admin' ? 'bg-gradient-to-r from-green-500/10 via-slate-900 to-slate-900' : 'bg-gradient-to-r from-blue-500/10 via-slate-900 to-slate-900'}`}>
+              <div className="flex items-center gap-4 relative z-10">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shadow-xl ${selectedStaff.role === 'admin' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-blue-500/20 border-blue-500/30 text-blue-400'}`}>
+                  {selectedStaff.role === 'admin' ? <ShieldCheck size={26} /> : <Users size={26} />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight italic">
+                      {selectedStaff.full_name || 'STAFF MEMBER'}
+                    </h3>
+                    <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest border ${selectedStaff.role === 'admin' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                      {selectedStaff.role}
+                    </span>
+                  </div>
+                  <p className="text-slate-400 font-mono text-xs mt-0.5">{selectedStaff.email}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedStaff(null)} 
+                className="p-2.5 text-slate-400 hover:text-white rounded-xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition-all relative z-10"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* MODAL NAVIGATION TABS */}
+            <div className="flex border-b border-slate-800 bg-slate-950/50 p-1.5 px-6 gap-2">
+              <button
+                onClick={() => setActiveTab('general')}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'general' ? 'bg-slate-800 text-white shadow-md border border-slate-700' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <Sliders size={13} />
+                General Management
+              </button>
+              <button
+                onClick={() => setActiveTab('danger')}
+                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'danger' ? 'bg-red-500/10 text-red-400 border border-red-500/20 shadow-md' : 'text-slate-500 hover:text-red-400'}`}
+              >
+                <UserX size={13} />
+                Danger Zone
+              </button>
+            </div>
+
+            {/* MODAL BODY CONTENT */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+              {activeTab === 'general' ? (
+                <>
+                  {/* ROLE ASSIGNMENT CARD */}
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-inner">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                      <div className="flex items-center gap-2 text-slate-200">
+                        <Shield size={16} className="text-blue-500" />
+                        <span className="text-xs font-black uppercase tracking-wider">Access Permission Role</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">System Privileges</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleRoleChange(selectedStaff.email, 'volunteer')}
+                        disabled={processingId === selectedStaff.email}
+                        className={`p-3 rounded-xl border text-left transition-all relative ${selectedStaff.role === 'volunteer' ? 'bg-blue-500/10 border-blue-500/40 text-blue-400 shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-black uppercase tracking-wider">Volunteer</span>
+                          {selectedStaff.role === 'volunteer' && <CheckCircle2 size={14} className="text-blue-500" />}
+                        </div>
+                        <p className="text-[9px] text-slate-500 leading-tight">Check-in and manifest verification only.</p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRoleChange(selectedStaff.email, 'admin')}
+                        disabled={processingId === selectedStaff.email}
+                        className={`p-3 rounded-xl border text-left transition-all relative ${selectedStaff.role === 'admin' ? 'bg-green-500/10 border-green-500/40 text-green-400 shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-black uppercase tracking-wider">Admin</span>
+                          {selectedStaff.role === 'admin' && <CheckCircle2 size={14} className="text-green-500" />}
+                        </div>
+                        <p className="text-[9px] text-slate-500 leading-tight">Full administrative & operator permissions.</p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ACCOUNT ACCESS CONTROL CARD */}
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-inner">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                      <div className="flex items-center gap-2 text-slate-200">
+                        <Lock size={16} className={selectedStaff.is_active ? "text-green-500" : "text-red-500"} />
+                        <span className="text-xs font-black uppercase tracking-wider">Account Active Status</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${selectedStaff.is_active ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${selectedStaff.is_active ? 'text-green-400' : 'text-red-400'}`}>
+                          {selectedStaff.is_active ? 'ACTIVE' : 'REVOKED'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleToggleActive(selectedStaff)}
+                      disabled={processingId === selectedStaff.email}
+                      className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 border shadow-lg ${selectedStaff.is_active ? 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500 hover:text-slate-950' : 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500 hover:text-slate-950'}`}
+                    >
+                      {selectedStaff.is_active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                      {selectedStaff.is_active ? 'Revoke System Access' : 'Grant Active System Access'}
+                    </button>
+                  </div>
+
+                  {/* PASSWORD RESET DISPATCH CARD */}
+                  <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-inner">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                      <div className="flex items-center gap-2 text-slate-200">
+                        <Key size={16} className="text-amber-500" />
+                        <span className="text-xs font-black uppercase tracking-wider">Password Credentials</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-mono">SUPABASE AUTH</span>
+                    </div>
+                    <button
+                      onClick={() => handleResetPassword(selectedStaff.email)}
+                      disabled={processingId === selectedStaff.email}
+                      className="w-full py-3 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-amber-500/40 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+                    >
+                      {processingId === selectedStaff.email ? <RefreshCw size={14} className="animate-spin" /> : <Key size={14} />}
+                      Dispatch Password Reset Email
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* DANGER ZONE TAB */
+                <div className="bg-red-500/5 border border-red-500/20 p-6 rounded-2xl space-y-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
+                    <ShieldAlert size={26} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-red-400 uppercase tracking-wider">Delete Staff Profile</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 max-w-xs mx-auto leading-relaxed">
+                      Permanently removes <span className="text-white font-mono">{selectedStaff.email}</span> from operator manifest database.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteUser(selectedStaff.email)}
+                    disabled={processingId === selectedStaff.email}
+                    className="w-full py-3 bg-red-500 text-slate-950 hover:bg-red-400 font-black rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xl shadow-red-500/20"
+                  >
+                    {processingId === selectedStaff.email ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={16} />}
+                    CONFIRM PERMANENT DELETION
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex justify-end">
+              <button
+                onClick={() => setSelectedStaff(null)}
+                className="px-5 py-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+              >
+                Close Management Window
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default OperatorManifest;
-

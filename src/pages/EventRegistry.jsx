@@ -3,14 +3,184 @@ import { useNavigate } from 'react-router-dom';
 import { fetchEvents as fetchEventsApi, createEvent } from '../api/events';
 import { 
   Plus, Calendar, BarChart3, Users, Search, Filter, 
-  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, MapPin
+  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
+
+// Small & Compact Custom DatePicker Component
+const CompactDatePicker = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedDateObj = useMemo(() => {
+    if (!value) return new Date();
+    const parts = value.split('-');
+    if (parts.length === 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return new Date();
+  }, [value]);
+
+  const [viewDate, setViewDate] = useState(selectedDateObj);
+
+  useEffect(() => {
+    setViewDate(selectedDateObj);
+  }, [selectedDateObj]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+  };
+
+  const handleSelectDay = (day) => {
+    const year = viewDate.getFullYear();
+    const month = String(viewDate.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    onChange(`${year}-${month}-${dayStr}`);
+    setIsOpen(false);
+  };
+
+  const setOffsetDate = (days) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(d.getDate()).padStart(2, '0');
+    onChange(`${year}-${month}-${dayStr}`);
+    setViewDate(d);
+    setIsOpen(false);
+  };
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayIndex = new Date(year, month, 1).getDay();
+
+  const formattedDisplay = useMemo(() => {
+    return selectedDateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }, [selectedDateObj]);
+
+  return (
+    <div className="relative space-y-1.5">
+      <div className="flex items-center gap-2">
+        {/* SMALL DATEPICKER BUTTON */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-blue-500/40 text-slate-200 hover:text-white rounded-lg text-xs font-medium flex items-center gap-2 transition-all min-h-[36px]"
+        >
+          <Calendar size={13} className="text-blue-500" />
+          <span>{formattedDisplay}</span>
+        </button>
+
+        {/* NATIVE INPUT (COMPACT) */}
+        <input 
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-blue-500 min-h-[36px] w-32 cursor-pointer font-mono"
+        />
+      </div>
+
+      {/* SMALL PRESET BUTTONS */}
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] text-slate-500">Preset:</span>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(0)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(1)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          Tomorrow
+        </button>
+        <button
+          type="button"
+          onClick={() => setOffsetDate(7)}
+          className="px-2 py-0.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white rounded text-[10px] transition-all"
+        >
+          +7d
+        </button>
+      </div>
+
+      {/* COMPACT POPOVER CALENDAR */}
+      {isOpen && (
+        <div className="absolute top-10 left-0 z-[250] bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-2xl space-y-2 w-60 animate-in fade-in duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+            <button 
+              type="button" 
+              onClick={handlePrevMonth}
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="text-xs font-semibold text-white">
+              {monthNames[month]} {year}
+            </span>
+            <button 
+              type="button" 
+              onClick={handleNextMonth}
+              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5 text-center text-[9px] font-medium text-slate-500">
+            <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+            {Array.from({ length: firstDayIndex }).map((_, i) => (
+              <span key={`empty-${i}`} className="p-1"></span>
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const dayNum = i + 1;
+              const isSelected = 
+                selectedDateObj.getFullYear() === year && 
+                selectedDateObj.getMonth() === month && 
+                selectedDateObj.getDate() === dayNum;
+
+              return (
+                <button
+                  key={dayNum}
+                  type="button"
+                  onClick={() => handleSelectDay(dayNum)}
+                  className={`p-1 rounded text-xs transition-all ${isSelected ? 'bg-blue-600 text-white font-bold' : 'text-slate-300 hover:bg-slate-800'}`}
+                >
+                  {dayNum}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const EventRegistry = ({ userRole }) => {
   const [events, setEvents] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', date: '' });
+  const [newEvent, setNewEvent] = useState({ 
+    title: '', 
+    date: new Date().toISOString().split('T')[0], 
+    is_active: true 
+  });
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,11 +229,25 @@ const EventRegistry = ({ userRole }) => {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    if (!newEvent.title.trim()) {
+      showToast("Please enter an event title.", 'error');
+      return;
+    }
+
     setProcessing(true);
-    const { error } = await createEvent(newEvent);
+    const { error } = await createEvent({
+      title: newEvent.title.trim(),
+      date: newEvent.date,
+      is_active: newEvent.is_active
+    });
+
     if (!error) { 
       setShowEventModal(false); 
-      setNewEvent({ title: '', date: '' }); 
+      setNewEvent({ 
+        title: '', 
+        date: new Date().toISOString().split('T')[0], 
+        is_active: true 
+      }); 
       await fetchEvents();
       showToast("Event created successfully.");
     } else {
@@ -145,7 +329,7 @@ const EventRegistry = ({ userRole }) => {
         <StatCard label="Offline Events" value={stats.offline} color="bg-slate-900/40" char="O" />
       </div>
 
-      {/* CONTROLS BAR: SEARCH, STATUS FILTER & VIEW TOGGLE */}
+      {/* CONTROLS BAR */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/40 border border-slate-800 p-3 sm:p-4 rounded-xl">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
@@ -262,7 +446,7 @@ const EventRegistry = ({ userRole }) => {
           ))}
         </div>
       ) : (
-        /* TABLE LIST VIEW (RESPONSIVE) */
+        /* TABLE LIST VIEW */
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -333,59 +517,126 @@ const EventRegistry = ({ userRole }) => {
         </div>
       )}
 
-      {/* EVENT CREATION MODAL (MOBILE RESPONSIVE) */}
+      {/* UPGRADED CREATE EVENT MODAL WITH SMALL DATEPICKER BUTTON */}
       {showEventModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-5 shadow-2xl text-left">
+          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-4 shadow-2xl text-left flex flex-col max-h-[90vh] overflow-y-auto">
+            
+            {/* MODAL HEADER */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h2 className="text-base sm:text-lg font-semibold text-white">Create New Event</h2>
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                  <Calendar size={18} className="text-blue-500" />
+                  Create New Event
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Set up event details and gate status.</p>
+              </div>
               <button 
                 type="button"
                 onClick={() => setShowEventModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-medium">Event Name</label>
+            {/* FORM INPUTS */}
+            <div className="space-y-3.5 text-xs">
+              {/* EVENT NAME */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                  <Tag size={13} className="text-slate-400" />
+                  Event Name
+                </label>
                 <input 
                   value={newEvent.title} 
                   onChange={e => setNewEvent({...newEvent, title: e.target.value})} 
-                  placeholder="e.g. Annual Gala 2026" 
+                  placeholder="e.g. Annual Programming Contest 2026" 
                   required 
-                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
+                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[40px]" 
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-medium">Event Date</label>
-                <input 
-                  type="date" 
+              {/* SMALL COMPACT DATE PICKER */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                  <Calendar size={13} className="text-slate-400" />
+                  Select Event Date
+                </label>
+                <CompactDatePicker 
                   value={newEvent.date} 
-                  onChange={e => setNewEvent({...newEvent, date: e.target.value})} 
-                  required 
-                  className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
+                  onChange={(newDate) => setNewEvent({ ...newEvent, date: newDate })} 
                 />
+              </div>
+
+              {/* INITIAL GATE STATUS TOGGLE */}
+              <div className="space-y-1">
+                <label className="text-xs text-slate-300 font-medium">Initial Gate Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewEvent({...newEvent, is_active: true})}
+                    className={`p-2.5 rounded-lg border text-left transition-all ${newEvent.is_active ? 'bg-green-500/10 border-green-500/40 text-green-400 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs">Active Gate</span>
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Check-in open immediately</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewEvent({...newEvent, is_active: false})}
+                    className={`p-2.5 rounded-lg border text-left transition-all ${!newEvent.is_active ? 'bg-slate-800 border-slate-700 text-white font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs">Offline / Draft</span>
+                      <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Gate kept inactive for now</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* COMPACT LIVE PREVIEW */}
+              <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                  <Eye size={13} className="text-blue-500" />
+                  <span className="font-medium">Live Card Preview</span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${newEvent.is_active ? 'bg-green-500' : 'bg-slate-500'}`}></span>
+                      <span className={newEvent.is_active ? 'text-green-400 font-medium' : 'text-slate-400'}>
+                        {newEvent.is_active ? 'Active Gate' : 'Offline'}
+                      </span>
+                    </div>
+                    <span className="text-slate-500 font-mono text-[9px]">{newEvent.date}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-white truncate">
+                    {newEvent.title.trim() || 'Untitled Event'}
+                  </h4>
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            {/* MODAL FOOTER */}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
               <button 
                 type="button"
                 onClick={() => setShowEventModal(false)}
-                className="px-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all min-h-[44px]"
+                className="px-4 py-2.5 bg-slate-950 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all min-h-[40px]"
               >
                 Cancel
               </button>
               <button 
                 disabled={processing}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition-all shadow-md flex items-center justify-center gap-1.5 min-h-[44px]"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition-all shadow-md flex items-center justify-center gap-1.5 min-h-[40px]"
               >
                 {processing ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                <span>Create Event</span>
+                <span>Publish Event</span>
               </button>
             </div>
           </form>

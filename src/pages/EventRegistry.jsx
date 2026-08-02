@@ -3,14 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { fetchEvents as fetchEventsApi, createEvent } from '../api/events';
 import { 
   Plus, Calendar, BarChart3, Users, Search, Filter, 
-  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, MapPin
+  LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 
 const EventRegistry = ({ userRole }) => {
   const [events, setEvents] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', date: '' });
+  const [newEvent, setNewEvent] = useState({ 
+    title: '', 
+    date: new Date().toISOString().split('T')[0], 
+    is_active: true 
+  });
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,11 +63,25 @@ const EventRegistry = ({ userRole }) => {
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    if (!newEvent.title.trim()) {
+      showToast("Please enter an event title.", 'error');
+      return;
+    }
+
     setProcessing(true);
-    const { error } = await createEvent(newEvent);
+    const { error } = await createEvent({
+      title: newEvent.title.trim(),
+      date: newEvent.date,
+      is_active: newEvent.is_active
+    });
+
     if (!error) { 
       setShowEventModal(false); 
-      setNewEvent({ title: '', date: '' }); 
+      setNewEvent({ 
+        title: '', 
+        date: new Date().toISOString().split('T')[0], 
+        is_active: true 
+      }); 
       await fetchEvents();
       showToast("Event created successfully.");
     } else {
@@ -145,7 +163,7 @@ const EventRegistry = ({ userRole }) => {
         <StatCard label="Offline Events" value={stats.offline} color="bg-slate-900/40" char="O" />
       </div>
 
-      {/* CONTROLS BAR: SEARCH, STATUS FILTER & VIEW TOGGLE */}
+      {/* CONTROLS BAR */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/40 border border-slate-800 p-3 sm:p-4 rounded-xl">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
@@ -262,7 +280,7 @@ const EventRegistry = ({ userRole }) => {
           ))}
         </div>
       ) : (
-        /* TABLE LIST VIEW (RESPONSIVE) */
+        /* TABLE LIST VIEW */
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -333,35 +351,52 @@ const EventRegistry = ({ userRole }) => {
         </div>
       )}
 
-      {/* EVENT CREATION MODAL (MOBILE RESPONSIVE) */}
+      {/* UPGRADED CREATE EVENT MODAL WITH LIVE PREVIEW */}
       {showEventModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-5 shadow-2xl text-left">
+          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-lg space-y-5 shadow-2xl text-left flex flex-col max-h-[90vh] overflow-y-auto">
+            
+            {/* MODAL HEADER */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h2 className="text-base sm:text-lg font-semibold text-white">Create New Event</h2>
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
+                  <Calendar size={18} className="text-blue-500" />
+                  Create New Event
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Set up event portal details and gate status.</p>
+              </div>
               <button 
                 type="button"
                 onClick={() => setShowEventModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <X size={16} />
               </button>
             </div>
 
+            {/* FORM INPUTS */}
             <div className="space-y-4 text-xs">
+              {/* EVENT NAME */}
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-medium">Event Name</label>
+                <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                  <Tag size={13} className="text-slate-400" />
+                  Event Name
+                </label>
                 <input 
                   value={newEvent.title} 
                   onChange={e => setNewEvent({...newEvent, title: e.target.value})} 
-                  placeholder="e.g. Annual Gala 2026" 
+                  placeholder="e.g. Annual Programming Contest 2026" 
                   required 
                   className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
                 />
               </div>
 
+              {/* EVENT DATE */}
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-300 font-medium">Event Date</label>
+                <label className="text-xs text-slate-300 font-medium flex items-center gap-1.5">
+                  <Calendar size={13} className="text-slate-400" />
+                  Event Date
+                </label>
                 <input 
                   type="date" 
                   value={newEvent.date} 
@@ -370,9 +405,75 @@ const EventRegistry = ({ userRole }) => {
                   className="w-full bg-slate-950 border border-slate-800 p-3 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
                 />
               </div>
+
+              {/* INITIAL GATE STATUS TOGGLE */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-slate-300 font-medium">Initial Gate Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewEvent({...newEvent, is_active: true})}
+                    className={`p-3 rounded-xl border text-left transition-all ${newEvent.is_active ? 'bg-green-500/10 border-green-500/40 text-green-400 font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs">Active Gate</span>
+                      <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Check-in portal open immediately.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewEvent({...newEvent, is_active: false})}
+                    className={`p-3 rounded-xl border text-left transition-all ${!newEvent.is_active ? 'bg-slate-800 border-slate-700 text-white font-semibold' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs">Offline / Draft</span>
+                      <span className="w-2 h-2 rounded-full bg-slate-500"></span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-normal">Gate portal kept inactive for now.</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* LIVE CARD PREVIEW SECTION */}
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                  <Eye size={13} className="text-blue-500" />
+                  <span className="font-medium">Live Event Card Preview</span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`w-2 h-2 rounded-full ${newEvent.is_active ? 'bg-green-500' : 'bg-slate-500'}`}></span>
+                      <span className={`text-[11px] ${newEvent.is_active ? 'text-green-400 font-medium' : 'text-slate-400'}`}>
+                        {newEvent.is_active ? 'Active Gate' : 'Offline'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-mono">PREVIEW</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white">
+                      {newEvent.title.trim() || 'Untitled Event'}
+                    </h4>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">{newEvent.date}</p>
+                  </div>
+                  <div className="pt-1">
+                    <button 
+                      type="button"
+                      disabled={!newEvent.is_active}
+                      className="w-full py-2 px-3 bg-green-600 text-white rounded-lg text-xs font-medium disabled:opacity-40 disabled:bg-slate-800 disabled:text-slate-500 flex items-center justify-center gap-1.5"
+                    >
+                      <span>Start Check-In Gate</span>
+                      <ArrowRight size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            {/* MODAL FOOTER */}
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
               <button 
                 type="button"
                 onClick={() => setShowEventModal(false)}
@@ -385,7 +486,7 @@ const EventRegistry = ({ userRole }) => {
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition-all shadow-md flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 {processing ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={14} />}
-                <span>Create Event</span>
+                <span>Publish Event</span>
               </button>
             </div>
           </form>

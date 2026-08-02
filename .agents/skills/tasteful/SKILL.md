@@ -1,78 +1,48 @@
 ---
 name: tasteful
-description: Principles, design tokens, glassmorphism patterns, micro-interactions, responsive table layouts, and UX guidelines for crafting tasteful, state-of-the-art web interfaces in Antigravity and Gemini. Trigger whenever designing, updating, or reviewing web UI/UX components.
+description: Principles, design tokens, human-crafted design guidelines, responsive table layouts, and UX guidelines for Antigravity and Gemini. Trigger whenever designing, updating, or reviewing web UI/UX components.
 ---
 
-# Tasteful Web UI & Design System Skill
+# Tasteful & Human-Crafted Web UI Guidelines
 
-This skill defines essential principles and reusable patterns for engineering **tasteful, high-impact, modern web interfaces**. Use these guidelines whenever creating or modifying front-end components, pages, forms, tables, and interactive overlays.
+This skill defines essential principles for engineering **clean, professional, modern, and human-crafted web interfaces**.
 
 ---
 
 ## Core Aesthetic Principles
 
-### 1. Curated Color Palettes (No Plain Defaults)
-- Avoid default, uncalibrated primary colors (e.g., pure `#0000FF` or `#FF0000`).
-- Use cohesive, rich HSL / Tailwind slate dark tones:
-  - **Background Base**: `bg-slate-950` / `bg-slate-900`
-  - **Borders & Dividers**: `border-slate-800` / `border-slate-700/50`
-  - **Accents**: Neon glow highlights with opacity layering (`bg-blue-500/10 border-blue-500/20 text-blue-400`, `bg-green-500/10 border-green-500/20 text-green-400`, `bg-amber-500/10 border-amber-500/20 text-amber-400`).
+### 1. Avoid AI Clutter & Futuristic Buzzwords
+- **No Over-The-Top Buzzwords**: Avoid artificial HUD labels like `SYSTEM MANIFEST ONLINE`, `AUTH DB CONNECTED`, `ID: ACTIVE`, `SUPABASE AUTH`, or `SYSTEM PRIVILEGES`.
+- **Natural Casing**: Use standard Title Case or Sentence case for headers (`Staff Management`, `Pending Registrations`, `Add Staff Member`). Avoid excessive all-caps and italicized titles.
+- **Monospace Usage**: Reserve monospaced fonts (`font-mono`) strictly for email addresses, code snippets, timestamps, or hashes.
 
-### 2. Glassmorphism & Depth
-- Layer surfaces using subtle background blurs (`backdrop-blur-md`, `backdrop-blur-xl`).
-- Use multi-layer drop shadows (`shadow-2xl`, `shadow-[0_0_15px_rgba(59,130,246,0.1)]`).
-- Apply subtle radial gradient glows for focal points.
+### 2. Refined Color System & Surfaces
+- **Background Base**: `bg-slate-950`
+- **Surface Cards & Sections**: `bg-slate-900/40 border border-slate-800 rounded-xl`
+- **Subtle Status Badges**:
+  - Admin: `bg-green-500/10 text-green-400 border border-green-500/20`
+  - Volunteer / General: `bg-blue-500/10 text-blue-400 border border-blue-500/20`
+  - Pending: `bg-amber-500/10 text-amber-400 border border-amber-500/20`
 
-### 3. Typography & Hierarchy
-- **Headings**: Uppercase, heavy weights (`font-black`), tracking adjustments (`tracking-tighter` or `tracking-tight`), italicized accents.
-- **Subheaders & Labels**: Micro font sizes (`text-[9px]` or `text-[10px]`), uppercase, wide letter spacing (`tracking-widest` or `tracking-[0.2em]`), muted text colors (`text-slate-400` / `text-slate-500`).
-- **Code & IDs**: Use monospaced fonts (`font-mono`) for emails, hashes, timestamps, and database IDs.
-
----
-
-## Responsive Table List Standards
-
-When displaying collections of items (users, events, logs, manifest items), implement a **High-Density Responsive Table List**:
-
-1. **Table Container**:
-   ```jsx
-   <div className="overflow-x-auto rounded-xl border border-slate-800">
-     <table className="w-full text-left border-collapse">
-       ...
-     </table>
-   </div>
-   ```
-2. **Table Header**:
-   - Background: `bg-slate-950/80 border-b border-slate-800`
-   - Labels: `text-[9px] font-black uppercase tracking-widest text-slate-400`
-3. **Table Body Rows**:
-   - Hover state: `hover:bg-slate-800/40 transition-colors`
-   - Disabled/Inactive state: `opacity-60 bg-slate-950/20`
-   - Actions Column: Consolidate complex row actions into a single `Manage` button that triggers a dedicated management modal rather than cluttering rows with inline action buttons.
+### 3. High-Density Clean Tables
+- Render collection items in responsive tables with clean column headers (`Name`, `Email`, `Role`, `Status`, `Settings`).
+- Provide 1-click sortable headers (`ArrowUpDown` indicator).
+- Use initials avatar badges for users (`bg-slate-800 text-slate-300`).
+- Consolidate row action buttons into a single `Manage` button that opens a clean modal.
 
 ---
 
 ## Modal UX & Overlay Standards
 
-For complex actions, item configuration, or forms:
-1. **Backdrop**: `fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-300`
-2. **Card Structure**:
-   - Outer: `bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col`
-   - Header: Gradient accent background (`bg-gradient-to-r from-blue-500/10 via-slate-900 to-slate-900`), Avatar icon, Title, Subtitle, Close button (`X`).
-   - Navigation Tabs: Clean tab bar for separating general options vs. destructive actions (e.g. `General Management` vs. `Danger Zone`).
-   - Action Cards: Group related settings into dark inset containers (`bg-slate-950/80 border border-slate-800/80 p-4 rounded-2xl`).
+1. **Backdrop**: `fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200`
+2. **Card Structure**: `bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col`
+3. **Card Groups**: Enclose modal sections in dark inset boxes (`bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2`).
+4. **Keyboard Shortcuts**: Always support the `Escape` key (`ESC`) to dismiss open modals.
 
 ---
 
-## Interactive Feedback & Micro-Animations
+## Interactive Micro-Interactions
 
-- **Active States**: Add scale feedback (`active:scale-95`).
-- **Loading States**: Replace action icons with animated spinners (`RefreshCw className="animate-spin"`).
-- **Status Dots**: Use animated pulsing dots for live active states (`bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse`).
-
----
-
-## Supporting Resources & References
-
-- See [design_system.md](file://references/design_system.md) for detailed CSS variables and Tailwind class mappings.
-- See [glass_modal.jsx](file://examples/glass_modal.jsx) for a reference React glassmorphism modal implementation.
+- Add subtle hover transitions on table rows (`hover:bg-slate-800/30 transition-colors`).
+- Use auto-dismissing toast notifications (`3.5s` duration) for instant feedback on user actions.
+- Provide smooth button transitions (`transition-all active:scale-95`).

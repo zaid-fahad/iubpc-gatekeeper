@@ -43,3 +43,16 @@ export const insertAttendee = async (attendeeData) => {
 export const bulkInsertAttendees = async (attendeesData) => {
   return supabase.from('attendees').insert(attendeesData);
 };
+
+/**
+ * Helper to fetch student details from an external student API.
+ * Ready to be connected to the official Student API endpoint when provided.
+ */
+export const fetchStudentInfoFromExternalApi = async (studentId) => {
+  // Extensible placeholder: Replace with actual fetch call when API URL is provided
+  return {
+    student_id: studentId,
+    full_name: `Student (${studentId})`,
+    email: `${studentId}@iub.edu.bd`
+  };
+};

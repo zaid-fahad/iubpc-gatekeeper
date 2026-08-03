@@ -107,7 +107,9 @@ const GuestListPortal = () => {
   const filtered = attendees.filter(a => 
     a.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     a.student_id?.includes(searchTerm) ||
-    a.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    a.phone?.includes(searchTerm)
   );
 
   if (!event && loading) return <LoadingSpinner />;

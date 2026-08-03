@@ -129,15 +129,17 @@ const SelfEntryKiosk = () => {
       setActiveAttendee(null);
       setResultStatus('not_found');
       setOnSpotData(prev => ({ ...prev, studentId: query }));
-      setCountdown(10); // Extra time to choose on-spot option
+      setCountdown(12); // Extra time for on-spot options
     }
 
     setProcessing(false);
   };
 
-  // Handle On-Spot Registration Submission
+  // Handle On-Spot Registration Submission with 7s Timeout Protection
   const handleOnSpotSubmit = async (e) => {
     e.preventDefault();
+    if (submittingOnSpot) return;
+
     setOnSpotError('');
 
     const name = onSpotData.name.trim();
@@ -150,7 +152,7 @@ const SelfEntryKiosk = () => {
     let finalReference = null;
 
     if (onSpotTab === 'student') {
-      finalStudentId = onSpotData.studentId.trim() || studentIdInput.trim();
+      finalStudentId = (onSpotData.studentId || studentIdInput).trim();
       if (!finalStudentId) {
         setOnSpotError('Please enter Student ID.');
         return;
@@ -158,45 +160,62 @@ const SelfEntryKiosk = () => {
     } else {
       finalReference = onSpotData.reference.trim();
       if (!finalReference) {
-        setOnSpotError('Please enter reference person or host name.');
+        setOnSpotError('Please enter reference person / host name.');
         return;
       }
-      finalStudentId = `GUEST-${Date.now().toString().slice(-6)}`;
+      finalStudentId = `GUEST-${Math.floor(100000 + Math.random() * 900000)}`;
     }
 
     setSubmittingOnSpot(true);
 
-    const { data, error } = await insertAttendee({
-      event_id: eventId,
-      full_name: name,
-      student_id: finalStudentId,
-      reference: finalReference,
-      is_on_spot: true,
-      checked_in_1: true
-    });
+    try {
+      // Create timeout safety promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Network response timed out. Please try again.")), 7000)
+      );
 
-    if (error || !data || !data[0]) {
-      console.error("On-Spot Reg Error:", error);
-      setOnSpotError('Registration failed. Please check with gate staff.');
+      // Perform attendee insertion with timeout race
+      const insertPromise = insertAttendee({
+        event_id: eventId,
+        full_name: name,
+        student_id: finalStudentId,
+        email: `${finalStudentId.toLowerCase()}@kiosk.local`,
+        reference: finalReference,
+        is_on_spot: true,
+        checked_in_1: true
+      });
+
+      const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+
+      if (error || !data || !data[0]) {
+        console.error("On-Spot Reg Error:", error);
+        setOnSpotError(error?.message || 'Registration failed. Please check with gate staff.');
+        setSubmittingOnSpot(false);
+        return;
+      }
+
+      const newMember = data[0];
+
+      // Non-blocking entry log insertion
+      insertEntryLog({
+        attendee_id: newMember.id,
+        event_id: eventId,
+        action_type: 'checked_in_1',
+        status: true,
+        admin_email: adminEmail || 'kiosk-onspot'
+      }).catch(err => console.error("Log error:", err));
+
+      setAttendees(prev => [newMember, ...prev]);
+      setActiveAttendee(newMember);
+      setResultStatus('success');
+      setShowOnSpotForm(false);
+      setCountdown(5);
+    } catch (err) {
+      console.error("Kiosk On-Spot Reg Error:", err);
+      setOnSpotError(err.message || "Request timed out. Please try again.");
+    } finally {
       setSubmittingOnSpot(false);
-      return;
     }
-
-    const newMember = data[0];
-    await insertEntryLog({
-      attendee_id: newMember.id,
-      event_id: eventId,
-      action_type: 'checked_in_1',
-      status: true,
-      admin_email: adminEmail || 'kiosk-onspot'
-    });
-
-    setAttendees(prev => [newMember, ...prev]);
-    setActiveAttendee(newMember);
-    setResultStatus('success');
-    setShowOnSpotForm(false);
-    setCountdown(5);
-    setSubmittingOnSpot(false);
   };
 
   // Touch Keypad press handler
@@ -475,7 +494,7 @@ const SelfEntryKiosk = () => {
                     <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div 
                         className="bg-amber-500 h-full transition-all duration-1000 ease-linear"
-                        style={{ width: `${(countdown / 10) * 100}%` }}
+                        style={{ width: `${(countdown / 12) * 100}%` }}
                       ></div>
                     </div>
                   </div>

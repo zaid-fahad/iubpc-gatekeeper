@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, insertAttendee, fetchStudentInfoFromExternalApi } from '../api/attendees';
+import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog } from '../api/attendees';
 import { getSession } from '../api/auth';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { 
   CheckCircle2, XCircle, Calendar, Clock, 
-  ArrowLeft, UserCheck, RefreshCw, IdCard, Delete, Keyboard, Smartphone, ShieldCheck, UserPlus
+  ArrowLeft, UserCheck, RefreshCw, IdCard, Delete, Keyboard, Smartphone
 } from 'lucide-react';
 
 const SelfEntryKiosk = () => {
@@ -20,8 +20,6 @@ const SelfEntryKiosk = () => {
   const [activeAttendee, setActiveAttendee] = useState(null);
   const [resultStatus, setResultStatus] = useState(null); // 'success' | 'not_found' | 'already_checked_in'
   const [inputMode, setInputMode] = useState('keyboard'); // 'keyboard' | 'touch'
-  const [allowKioskOnSpot, setAllowKioskOnSpot] = useState(true); // Kiosk On-Spot Reg Setting
-  const [registeringOnSpot, setRegisteringOnSpot] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [adminEmail, setAdminEmail] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -121,55 +119,10 @@ const SelfEntryKiosk = () => {
     } else {
       setActiveAttendee(null);
       setResultStatus('not_found');
-      setCountdown(6); // Give extra time if On-Spot option is displayed
+      setCountdown(4);
     }
 
     setProcessing(false);
-  };
-
-  // On-Spot Registration via Student API
-  const handleKioskOnSpotRegistration = async () => {
-    const query = studentIdInput.trim();
-    if (!query) return;
-
-    setRegisteringOnSpot(true);
-
-    try {
-      // Fetch Student details from External Student API
-      const studentInfo = await fetchStudentInfoFromExternalApi(query);
-
-      // Insert new on-spot attendee
-      const { data, error } = await insertAttendee({
-        event_id: eventId,
-        student_id: studentInfo.student_id,
-        full_name: studentInfo.full_name,
-        email: studentInfo.email,
-        is_on_spot: true,
-        checked_in_1: true
-      });
-
-      if (!error && data && data[0]) {
-        const newMember = data[0];
-        await insertEntryLog({
-          attendee_id: newMember.id,
-          event_id: eventId,
-          action_type: 'checked_in_1',
-          status: true,
-          admin_email: adminEmail || 'kiosk-onspot'
-        });
-
-        setAttendees(prev => [newMember, ...prev]);
-        setActiveAttendee(newMember);
-        setResultStatus('success');
-        setCountdown(5);
-      } else {
-        alert("Registration failed. Please check with gate staff.");
-      }
-    } catch (err) {
-      console.error("Kiosk On-Spot Reg Error:", err);
-    }
-
-    setRegisteringOnSpot(false);
   };
 
   // Touch Keypad press handler
@@ -419,21 +372,6 @@ const SelfEntryKiosk = () => {
                 </p>
               </div>
 
-              {allowKioskOnSpot && (
-                <div className="pt-2 border-t border-slate-800 space-y-2">
-                  <p className="text-xs text-slate-400">Allowed to register on-spot for this event?</p>
-                  <button
-                    type="button"
-                    onClick={handleKioskOnSpotRegistration}
-                    disabled={registeringOnSpot}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md min-h-[44px]"
-                  >
-                    {registeringOnSpot ? <RefreshCw size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                    <span>Register On-Spot & Check In ({studentIdInput})</span>
-                  </button>
-                </div>
-              )}
-
               {/* COUNTDOWN RESET PROGRESS BAR */}
               <div className="space-y-2 pt-2 border-t border-slate-800">
                 <div className="flex justify-between text-xs text-slate-400">
@@ -443,7 +381,7 @@ const SelfEntryKiosk = () => {
                 <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
                   <div 
                     className="bg-red-500 h-full transition-all duration-1000 ease-linear"
-                    style={{ width: `${(countdown / 6) * 100}%` }}
+                    style={{ width: `${(countdown / 4) * 100}%` }}
                   ></div>
                 </div>
               </div>

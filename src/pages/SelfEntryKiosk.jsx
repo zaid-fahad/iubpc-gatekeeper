@@ -158,6 +158,7 @@ const SelfEntryKiosk = () => {
         setOnSpotError('Please enter Student ID.');
         return;
       }
+      finalReference = onSpotData.reference ? onSpotData.reference.trim() : null;
     } else {
       finalReference = onSpotData.reference.trim();
       if (!finalReference) {
@@ -567,6 +568,17 @@ const SelfEntryKiosk = () => {
                           onChange={(e) => setOnSpotData(prev => ({ ...prev, name: e.target.value }))}
                           placeholder="Enter student full name..."
                           required
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none min-h-[44px]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-300 font-medium">Reference Person / Host (Optional)</label>
+                        <input
+                          type="text"
+                          value={onSpotData.reference}
+                          onChange={(e) => setOnSpotData(prev => ({ ...prev, reference: e.target.value }))}
+                          placeholder="e.g. Dr. Rahman (Faculty Host)"
                           className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none min-h-[44px]"
                         />
                       </div>

@@ -425,6 +425,13 @@ const EventRegistry = ({ userRole }) => {
                 </button>
                 <div className="flex gap-2">
                   <button 
+                    onClick={() => navigate(`/event/${ev.id}/kiosk`)}
+                    disabled={!ev.is_active}
+                    className="flex-1 py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-blue-400 hover:text-blue-300 rounded-lg text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-h-[44px]"
+                  >
+                    <span>Kiosk Mode</span>
+                  </button>
+                  <button 
                     onClick={() => navigate(`/event/${ev.id}/guests`)} 
                     className="flex-1 py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 min-h-[44px]"
                   >

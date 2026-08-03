@@ -139,9 +139,10 @@ const GateControl = () => {
       setError("");
       const timer = setTimeout(() => {
         const readerEl = document.getElementById("gate-reader");
-        if (readerEl && window.Html5Qrcode) {
+        const QrScanner = window.Html5Qrcode;
+        if (readerEl && QrScanner) {
           try {
-            const html5QrCode = new window.Html5Qrcode("gate-reader");
+            const html5QrCode = new QrScanner("gate-reader");
             html5QrCodeRef.current = html5QrCode;
             html5QrCode.start(
               { facingMode: "environment" }, 
@@ -333,6 +334,14 @@ const GateControl = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate(`/event/${eventId}/kiosk`)}
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md min-h-[44px]"
+            title="Launch Self Check-In Kiosk"
+          >
+            <UserCheck size={15}/>
+            <span>Kiosk Mode</span>
+          </button>
           <button 
             onClick={() => setShowAddModal(true)}
             className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md min-h-[44px]"

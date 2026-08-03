@@ -19,6 +19,8 @@ import OperatorManifest from './pages/OperatorManifest';
 import GateControl from './pages/GateControl';
 import GuestListPortal from './pages/GuestListPortal';
 import EventAnalytics from './pages/EventAnalytics';
+import SelfEntryKiosk from './pages/SelfEntryKiosk';
+import IrasApiConfig from './pages/IrasApiConfig';
 
 const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
   const location = useLocation();
@@ -77,7 +79,18 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
           } 
         />
 
-        {/* Event Specific Routes (can also be wrapped or kept standalone) */}
+        <Route 
+          path="/settings/iras" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <IrasApiConfig />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Event Specific Routes */}
         <Route 
           path="/event/:id/gate" 
           element={
@@ -105,6 +118,14 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
               <AppLayout userRole={userRole}>
                 <EventAnalytics />
               </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/event/:id/kiosk" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+              <SelfEntryKiosk />
             </ProtectedRoute>
           } 
         />

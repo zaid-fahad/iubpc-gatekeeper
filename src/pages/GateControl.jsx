@@ -196,65 +196,61 @@ const GateControl = () => {
   }, [attendees]);
 
   const filtered = useMemo(() => {
+    const query = searchInput.trim().toLowerCase();
+    if (!query) return attendees;
     return attendees.filter(a => 
-      a.full_name?.toLowerCase().includes(searchInput.toLowerCase()) || 
-      a.student_id?.includes(searchInput) ||
-      a.email?.toLowerCase().includes(searchInput.toLowerCase())
+      a.full_name?.toLowerCase().includes(query) || 
+      a.student_id?.toLowerCase().includes(query) || 
+      a.email?.toLowerCase().includes(query) ||
+      a.reference?.toLowerCase().includes(query) ||
+      a.phone?.toLowerCase().includes(query) ||
+      a.additional_info?.toLowerCase().includes(query)
     );
   }, [attendees, searchInput]);
 
   const selectMember = async (m) => {
     setMember(m);
     setError("");
-    setSearchInput("");
-    if (showScanner) stopScanner();
-    
-    const { data: logs } = await fetchAttendeeLogs(m.id);
-    setAttendeeHistory(logs || []);
+    const { data } = await fetchAttendeeLogs(m.id);
+    setAttendeeHistory(data || []);
   };
 
-  const updateStatus = async (field, overrideMember = null) => {
-    const currentMember = overrideMember || member;
-    if (!currentMember) return;
-    const isActivating = !currentMember[field];
-    
-    const { error: uError } = await updateAttendeeStatus(currentMember.id, field, isActivating);
-    if (uError) {
-      setError("Update failed.");
-      console.error("Status Update Error:", uError);
+  const updateStatus = async (field, val) => {
+    if (!member) return;
+    const { error: err } = await updateAttendeeStatus(member.id, field, val);
+    if (!err) {
+      await insertEntryLog({
+        attendee_id: member.id,
+        event_id: eventId,
+        action_type: field,
+        status: val,
+        admin_email: adminEmail
+      });
+
+      setAttendees(prev => prev.map(a => a.id === member.id ? { ...a, [field]: val } : a));
+      setMember(prev => prev ? { ...prev, [field]: val } : null);
+    }
+  };
+
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    setAddError("");
+
+    if (!addForm.name.trim()) {
+      setAddError("Full Name is required.");
       return;
     }
 
-    const { error: logError } = await insertEntryLog({
-      attendee_id: currentMember.id,
-      event_id: eventId,
-      action_type: field,
-      status: isActivating,
-      admin_email: adminEmail
-    });
-    if (logError) console.error("Log Insert Error:", logError);
+    const studentId = addForm.isGuest 
+      ? `GUEST-${Math.floor(100000 + Math.random() * 900000)}` 
+      : addForm.sid.trim();
 
-    const updatedMember = { ...currentMember, [field]: isActivating };
-    if (!overrideMember) setMember(updatedMember);
-    setAttendees(prev => prev.map(a => a.id === currentMember.id ? updatedMember : a));
-
-    const { data: gLogs } = await fetchEventLogs(eventId);
-    setGlobalHistory(gLogs || []);
-    if (!overrideMember) {
-      const { data: aLogs } = await fetchAttendeeLogs(currentMember.id);
-      setAttendeeHistory(aLogs || []);
+    if (!addForm.isGuest && !studentId) {
+      setAddError("Student ID is required for student registration.");
+      return;
     }
-  };
 
-  const handleManualAdd = async (e) => {
-    e.preventDefault();
-    setAddError("");
-    
-    const studentId = addForm.isGuest && !addForm.sid 
-      ? `GUEST-${Date.now().toString().slice(-6)}` 
-      : addForm.sid;
-    
-    const email = addForm.email || (addForm.isGuest ? `guest-${Date.now()}@internal.com` : "");
+    const email = addForm.email.trim() || `${studentId.toLowerCase()}@onspot.local`;
 
     const isDuplicate = attendees.some(a => 
       (email && a.email?.toLowerCase() === email.toLowerCase()) || 
@@ -273,7 +269,7 @@ const GateControl = () => {
       student_id: studentId,
       phone: addForm.phone,
       additional_info: addForm.info,
-      reference: addForm.isGuest ? addForm.ref : null,
+      reference: addForm.ref ? addForm.ref.trim() : null,
       is_on_spot: true
     });
 
@@ -285,21 +281,25 @@ const GateControl = () => {
       setAddForm({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
       setShowPromptModal(true);
     } else {
-      setAddError(error?.message || "Registration failed. Check for duplicate ID.");
+      setAddError(error?.message || "Failed to add attendee.");
     }
   };
 
-  const handlePromptDecision = async (authorize) => {
+  const handlePromptAction = async (checkIn) => {
     if (!pendingAttendee) return;
-    
-    if (authorize) {
-      await updateStatus('checked_in_1', pendingAttendee);
-      const updatedAttendee = { ...pendingAttendee, checked_in_1: true };
-      selectMember(updatedAttendee);
+    if (checkIn) {
+      await updateAttendeeStatus(pendingAttendee.id, 'checked_in_1', true);
+      await insertEntryLog({
+        attendee_id: pendingAttendee.id,
+        event_id: eventId,
+        action_type: 'checked_in_1',
+        status: true,
+        admin_email: adminEmail
+      });
+      selectMember({ ...pendingAttendee, checked_in_1: true });
     } else {
       selectMember(pendingAttendee);
     }
-    
     setShowPromptModal(false);
     setPendingAttendee(null);
   };
@@ -307,531 +307,522 @@ const GateControl = () => {
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-16 text-slate-100">
-      {/* HEADER BAR */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5 sm:pb-6">
+    <div className="space-y-6 italic selection:bg-green-500/30 selection:text-slate-950 pb-20">
+      
+      {/* HEADER BAR (RETAINED INTACT) */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/events')}
-            className="p-2.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 transition-colors"
             title="Back to Events"
           >
-            <ChevronLeft size={20}/>
+            <ChevronLeft size={20} />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                {event.title}
-              </h1>
-              <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium border ${event.is_active ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
-                {event.is_active ? 'Active Gate' : 'Offline'}
-              </span>
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">{event?.title}</h1>
             </div>
-            <p className="text-slate-400 text-xs mt-0.5 font-mono">
-              Event Date: {event.date}
-            </p>
+            <p className="text-xs text-slate-400 mt-0.5">Event Gate Control & Check-In Portal</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button 
             onClick={() => navigate(`/event/${eventId}/kiosk`)}
-            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md min-h-[44px]"
-            title="Launch Self Check-In Kiosk"
+            className="px-3.5 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all min-h-[44px]"
           >
-            <UserCheck size={15}/>
-            <span>Kiosk Mode</span>
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all shadow-md min-h-[44px]"
-          >
-            <UserPlus size={15}/>
-            <span>On-Spot Reg</span>
-          </button>
-          <button 
-            onClick={() => showScanner ? stopScanner() : setShowScanner(true)}
-            className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all min-h-[44px] ${showScanner ? 'bg-red-600 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
-          >
-            {showScanner ? <X size={15}/> : <QrCode size={15}/>}
-            <span>{showScanner ? 'Close Scanner' : 'Scan QR'}</span>
+            <IdCard size={15} className="text-purple-400" />
+            <span>Launch Kiosk</span>
           </button>
         </div>
       </header>
 
-      {/* QUICK STATS ANALYTICS BAR */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard label="Total Registered" value={stats.total} color="bg-slate-900/40" char="R" />
+      {/* MAIN 2-COLUMN LAYOUT: LEFT (SEARCH + LIST) vs TOP RIGHT (QUICK STATS + LOGS) */}
+      <main className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT SIDE: SEARCH BAR WITH BESIDE BUTTONS & ATTENDEE LIST (lg:col-span-7) */}
+        <div className="lg:col-span-7 space-y-4">
           
-          {/* CHECKED IN CARD WITH % BADGE */}
-          <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-xl space-y-1">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-              <span>Checked In</span>
-              <span className="px-2 py-0.5 rounded bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-bold">
-                {stats.percent}%
-              </span>
-            </div>
-            <p className="text-2xl font-bold text-white tracking-tight">{stats.checkedIn}</p>
-          </div>
-
-          <StatCard label="Remaining" value={stats.remaining} color="bg-slate-900/40" char="P" />
-          <StatCard label="On-Spot Reg" value={stats.onSpot} color="bg-purple-500/5" char="S" />
-        </div>
-
-        {/* CHECK-IN PROGRESS BAR */}
-        <div className="bg-slate-900/40 border border-slate-800 p-3 sm:p-4 rounded-xl space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-300 font-medium flex items-center gap-1.5">
-              <TrendingUp size={14} className="text-blue-500" />
-              Check-In Completion Rate
-            </span>
-            <span className="text-slate-400 font-mono">
-              {stats.checkedIn} / {stats.total} Checked In ({stats.percent}%)
-            </span>
-          </div>
-          <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-            <div 
-              className="bg-gradient-to-r from-green-600 to-emerald-400 h-full rounded-full transition-all duration-500"
-              style={{ width: `${stats.percent}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
-
-      {/* MAIN CHECK-IN INTERFACE */}
-      <main className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[500px]">
-        {/* LEFT PANEL: SEARCH & ATTENDEES LIST (lg: col-span-5) */}
-        <div className="lg:col-span-5 border border-slate-800 flex flex-col bg-slate-900/40 rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-4 space-y-3 shrink-0 border-b border-slate-800">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
-                <input 
-                  value={searchInput} 
-                  onChange={e => setSearchInput(e.target.value)} 
-                  placeholder="Search name, ID, or email..." 
-                  className="w-full bg-slate-950 border border-slate-800 p-3 pl-10 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition-colors min-h-[44px]" 
-                />
-              </div>
-            </div>
-
-            {/* QR CAMERA SCANNER CONTAINER */}
-            {showScanner && (
-              <div className="bg-slate-950 rounded-xl p-3 border border-slate-800 space-y-2 shadow-xl animate-in zoom-in duration-200">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-green-400 font-medium flex items-center gap-1.5">
-                    <QrCode size={14} /> Camera Scanner Active
-                  </span>
-                  <button 
-                    onClick={stopScanner}
-                    className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-                <div className="aspect-video bg-black rounded-lg overflow-hidden border border-slate-800 relative">
-                  <div id="gate-reader" className="w-full h-full"></div>
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/30 text-red-400 text-xs text-center flex items-center justify-center gap-1.5">
-                <AlertCircle size={14} />
-                <span>{error}</span>
-              </div>
-            )}
-          </div>
-
-          {/* ATTENDEE SCROLL LIST */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[550px]">
-            {filtered.length > 0 ? filtered.slice(0, 50).map(m => (
-              <button 
-                key={m.id} 
-                onClick={() => selectMember(m)} 
-                className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-blue-600/10 border-blue-500/50 shadow-sm' : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <img 
-                      src={m.avatar_url || `https://ui-avatars.com/api/?name=${m.full_name}&background=0f172a&color=cbd5e1`} 
-                      className={`w-10 h-10 rounded-lg border object-cover ${member?.id === m.id ? 'border-blue-500/40' : 'border-slate-800'}`} 
-                      alt=""
-                    />
-                    {m.checked_in_1 && (
-                      <div className="absolute -top-1 -right-1 p-0.5 rounded-full bg-green-500 text-slate-950 border border-slate-950">
-                        <CheckCircle2 size={10} />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className={`text-xs font-semibold ${member?.id === m.id ? 'text-blue-400' : 'text-white group-hover:text-blue-300'}`}>
-                      {m.full_name}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[11px] text-slate-400 font-mono">{m.student_id}</p>
-                      {m.is_on_spot && (
-                        <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400">
-                          Spot
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <div className={`w-2 h-2 rounded-full ${m.checked_in_1 ? 'bg-green-500' : 'bg-slate-800'}`} title="Checked In"></div>
-                  <div className={`w-2 h-2 rounded-full ${m.token_given ? 'bg-purple-500' : 'bg-slate-800'}`} title="Food Token"></div>
-                  <div className={`w-2 h-2 rounded-full ${m.checked_in_2 ? 'bg-blue-500' : 'bg-slate-800'}`} title="Gift"></div>
-                </div>
-              </button>
-            )) : (
-              <div className="text-center py-12 text-xs text-slate-500">No matching attendees found</div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT PANEL: SELECTED ATTENDEE & LIVE TIMELINE (lg: col-span-7) */}
-        <div className="hidden lg:flex lg:col-span-7 flex-col bg-slate-900/40 border border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-sm">
-          {!member ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-              <ScanLine size={48} className="text-slate-600 mb-2" />
-              <h3 className="text-base font-semibold text-white">Ready for Gate Check-In</h3>
-              <p className="text-xs text-slate-400 max-w-xs">Select an attendee from the list or scan a QR code to record gate check-in status.</p>
-              
-              <div className="mt-8 w-full max-w-sm space-y-2 text-left pt-4 border-t border-slate-800">
-                <h4 className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                  <History size={13} className="text-blue-500"/> Live Activity Feed
-                </h4>
-                {globalHistory.length > 0 ? globalHistory.slice(0, 4).map(h => (
-                  <div key={h.id} className="bg-slate-950 border border-slate-800/80 p-3 rounded-xl flex items-center justify-between text-xs">
-                    <span className="text-slate-300 font-medium">
-                      {(h.attendee?.full_name || h.attendees?.full_name || 'Attendee')}
-                      <span className="text-green-400 font-normal"> → {h.action_type.replaceAll('_', ' ')}</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">{new Date(h.created_at).toLocaleTimeString()}</span>
-                  </div>
-                )) : (
-                  <p className="text-xs text-slate-500 text-center py-4 border border-dashed border-slate-800 rounded-xl">No logs recorded yet</p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 space-y-6 animate-in fade-in duration-300">
-              {/* MEMBER PROFILE CARD */}
-              <div className="flex items-start gap-4 bg-slate-950 border border-slate-800 p-5 rounded-xl">
-                <div className="relative shrink-0">
-                  <img 
-                    src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=0f172a&color=cbd5e1`} 
-                    className="w-20 h-20 rounded-xl border border-slate-800 object-cover" 
-                    alt="" 
-                  />
-                  {member.checked_in_1 && (
-                    <div className="absolute -top-1.5 -right-1.5 bg-green-500 p-1 rounded-full text-slate-950 border border-slate-950">
-                      <CheckCircle2 size={12} />
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1 space-y-2">
-                  <div>
-                    <h3 className="text-lg font-bold text-white tracking-tight">{member.full_name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${member.is_on_spot ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
-                        {member.is_on_spot ? 'On-Spot Reg' : 'Pre-Registered'}
-                      </span>
-                      {member.reference && (
-                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-900 border border-slate-800 text-slate-400">
-                          Ref: {member.reference}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                    <div className="space-y-0.5">
-                      <p className="text-[10px] text-slate-500">Student ID</p>
-                      <p className="font-mono text-green-400 font-medium flex items-center gap-1">
-                        <IdCard size={13}/> {member.student_id}
-                      </p>
-                    </div>
-                    {member.phone && (
-                      <div className="space-y-0.5">
-                        <p className="text-[10px] text-slate-500">Phone</p>
-                        <p className="font-mono text-slate-300 flex items-center gap-1">
-                          <Phone size={13} className="text-purple-400"/> {member.phone}
-                        </p>
-                      </div>
-                    )}
-                    <div className="col-span-2 space-y-0.5">
-                      <p className="text-[10px] text-slate-500">Email</p>
-                      <p className="text-slate-300 flex items-center gap-1 truncate">
-                        <Mail size={13} className="text-blue-400"/> {member.email}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ADDITIONAL NOTES IF AVAILABLE */}
-              {member.additional_info && (
-                <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs space-y-1">
-                  <span className="text-[10px] text-slate-500 font-medium">Notes / Department Info</span>
-                  <p className="text-slate-300 leading-relaxed">{member.additional_info}</p>
-                </div>
+          {/* SEARCH BAR WITH BESIDE ACTION BUTTONS */}
+          <div className="flex flex-col sm:flex-row gap-2.5 items-center">
+            {/* SEARCH INPUT */}
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <input 
+                value={searchInput} 
+                onChange={e => setSearchInput(e.target.value)} 
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filtered.length > 0) {
+                      selectMember(filtered[0]);
+                    } else if (searchInput.trim()) {
+                      setError(`No attendee matching "${searchInput}" found.`);
+                    }
+                  }
+                }}
+                placeholder="Search name, ID, email, or reference (Press Enter to open)..." 
+                className="w-full bg-slate-900 border border-slate-800 focus:border-green-500 focus:ring-1 focus:ring-green-500/50 p-3.5 pl-10 rounded-xl text-xs text-white placeholder:text-slate-500 outline-none transition-colors min-h-[46px]" 
+              />
+              {searchInput && (
+                <button 
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                >
+                  Clear
+                </button>
               )}
+            </div>
 
-              {/* GATE ACTION BUTTONS */}
-              <div className="grid grid-cols-3 gap-3">
-                <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={18}/>} color="#4ADE80" />
-                <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={18}/>} color="#D8B4FE" />
-                <GateActBtn label="Gift" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={18}/>} color="#93C5FD" />
+            {/* ACTION BUTTONS DIRECTLY BESIDE SEARCH BAR */}
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <button 
+                onClick={() => showScanner ? stopScanner() : setShowScanner(true)}
+                className={`flex-1 sm:flex-none px-4 py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all min-h-[46px] shadow-sm ${showScanner ? 'bg-red-600 text-white' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+              >
+                {showScanner ? <X size={16}/> : <QrCode size={16}/>}
+                <span>{showScanner ? 'Close Scanner' : 'Scan QR'}</span>
+              </button>
+
+              <button 
+                onClick={() => setShowAddModal(true)}
+                className="flex-1 sm:flex-none px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all min-h-[46px] shadow-sm"
+              >
+                <UserPlus size={16} />
+                <span>On-Spot Reg</span>
+              </button>
+            </div>
+          </div>
+
+          {/* QR CAMERA SCANNER CONTAINER */}
+          {showScanner && (
+            <div className="bg-slate-950 rounded-xl p-3 border border-slate-800 space-y-2 shadow-xl animate-in zoom-in duration-200">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-green-400 font-medium flex items-center gap-1.5">
+                  <QrCode size={14} /> Camera Scanner Active
+                </span>
+                <button 
+                  onClick={stopScanner}
+                  className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+                >
+                  <X size={14} />
+                </button>
               </div>
-
-              {/* ACTIVITY LOGS */}
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                  <Clock size={13} className="text-slate-500"/> Attendee Activity History
-                </h4>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {attendeeHistory.length > 0 ? attendeeHistory.map(h => (
-                    <div key={h.id} className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full ${h.status ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                        <div>
-                          <p className="font-semibold text-slate-200">
-                            {h.action_type.replaceAll('_', ' ')}
-                            <span className="text-[10px] text-slate-500 ml-1.5 font-normal">{h.status ? 'ACTIVATED' : 'REVERSED'}</span>
-                          </p>
-                          {h.admin_email && <p className="text-[10px] text-slate-500">Staff: {h.admin_email}</p>}
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono text-slate-400">{new Date(h.created_at).toLocaleTimeString()}</span>
-                    </div>
-                  )) : (
-                    <div className="text-center py-6 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">No previous actions recorded</div>
-                  )}
-                </div>
+              <div className="aspect-video bg-black rounded-lg overflow-hidden border border-slate-800 relative">
+                <div id="gate-reader" className="w-full h-full"></div>
               </div>
             </div>
           )}
+
+          {error && (
+            <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/30 text-red-400 text-xs text-center flex items-center justify-center gap-1.5">
+              <AlertCircle size={14} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* ATTENDEE LIST CARD */}
+          <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm min-h-[450px]">
+            <div className="flex items-center justify-between text-xs text-slate-400 font-medium pb-2 border-b border-slate-800/80">
+              <span>Attendee List ({filtered.length})</span>
+              <span>Click item to manage</span>
+            </div>
+
+            <div className="space-y-2 max-h-[550px] overflow-y-auto pr-1">
+              {filtered.length > 0 ? filtered.slice(0, 80).map(m => (
+                <button 
+                  key={m.id} 
+                  onClick={() => selectMember(m)} 
+                  className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group ${member?.id === m.id ? 'bg-blue-600/10 border-blue-500/50 shadow-sm' : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <img 
+                        src={m.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.full_name)}&background=0f172a&color=cbd5e1`} 
+                        className={`w-10 h-10 rounded-lg border object-cover ${member?.id === m.id ? 'border-blue-500/40' : 'border-slate-800'}`} 
+                        alt=""
+                      />
+                      {m.checked_in_1 && (
+                        <div className="absolute -top-1 -right-1 p-0.5 rounded-full bg-green-500 text-slate-950 border border-slate-950">
+                          <CheckCircle2 size={10} />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-semibold ${member?.id === m.id ? 'text-blue-400' : 'text-white group-hover:text-blue-300'}`}>
+                        {m.full_name}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[11px] text-slate-400 font-mono">{m.student_id}</p>
+                        {m.is_on_spot && (
+                          <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                            On-Spot
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                      <div className={`w-2 h-2 rounded-full ${m.checked_in_1 ? 'bg-green-500' : 'bg-slate-800'}`} title="Checked In"></div>
+                      <div className={`w-2 h-2 rounded-full ${m.token_given ? 'bg-purple-500' : 'bg-slate-800'}`} title="Food Token"></div>
+                      <div className={`w-2 h-2 rounded-full ${m.checked_in_2 ? 'bg-blue-500' : 'bg-slate-800'}`} title="Gift"></div>
+                    </div>
+                  </div>
+                </button>
+              )) : (
+                <div className="text-center py-16 text-xs text-slate-500">No matching attendees found</div>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* TOP RIGHT SIDE: QUICK STATS ANALYTICS + LIVE ENTRY LOGS (lg:col-span-5) */}
+        <div className="lg:col-span-5 space-y-4">
+          
+          {/* QUICK STATS ANALYTICS BLOCK */}
+          <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <TrendingUp size={14} className="text-blue-500" />
+                Event Quick Stats
+              </h3>
+              <span className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-bold">
+                {stats.percent}% Checked In
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Total Registered" value={stats.total} color="bg-slate-950/60" char="R" />
+              <StatCard label="Checked In" value={stats.checkedIn} color="bg-green-500/10 border-green-500/20" char="C" />
+              <StatCard label="Remaining" value={stats.remaining} color="bg-slate-950/60" char="P" />
+              <StatCard label="On-Spot Reg" value={stats.onSpot} color="bg-purple-500/10 border-purple-500/20" char="S" />
+            </div>
+
+            {/* CHECK-IN PROGRESS BAR */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Overall Progress</span>
+                <span className="font-mono text-white font-medium">{stats.checkedIn} / {stats.total}</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
+                <div 
+                  className="bg-gradient-to-r from-green-600 to-emerald-400 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${stats.percent}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {/* LIVE RECENT ACTIVITY LOGS */}
+          <div className="bg-slate-900/40 border border-slate-800 p-5 rounded-2xl space-y-3 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Clock size={14} className="text-purple-400" />
+              Live Entry Timeline
+            </h3>
+
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+              {globalHistory.length > 0 ? globalHistory.slice(0, 15).map(log => (
+                <div key={log.id} className="p-3 bg-slate-950/60 border border-slate-800/80 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <p className="font-semibold text-white">{log.attendee?.full_name || 'Attendee'}</p>
+                    <p className="text-[11px] text-slate-400 font-mono">
+                      {log.action_type === 'checked_in_1' ? 'Gate Entry' : log.action_type === 'token_given' ? 'Food Token' : 'Gift Swag'} &bull; {log.status ? 'Granted' : 'Revoked'}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )) : (
+                <p className="text-center py-6 text-xs text-slate-500">No recent entry activity</p>
+              )}
+            </div>
+          </div>
+
+        </div>
+
       </main>
 
-      {/* MOBILE MEMBER DRAWER */}
+      {/* BOTTOM DRAWER MODAL (SLIDES UP ON ATTENDEE SELECTION) */}
       {member && (
-        <div className="lg:hidden fixed inset-0 z-[200] flex flex-col justify-end animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setMember(null)}></div>
-          <div className="relative bg-slate-900 rounded-t-2xl border-t border-slate-800 p-5 pt-4 pb-8 shadow-2xl animate-in slide-in-from-bottom-full duration-300 flex flex-col max-h-[85vh] overflow-y-auto text-xs space-y-4">
-            <div className="w-10 h-1 bg-slate-800 rounded-full mx-auto shrink-0" onClick={() => setMember(null)}></div>
+        <div className="fixed inset-0 z-[300] flex flex-col justify-end bg-slate-950/80 backdrop-blur-md p-0 sm:p-4 overflow-hidden animate-in fade-in duration-200">
+          <div className="w-full max-w-5xl mx-auto bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
             
-            <div className="flex items-center gap-3">
-              <img 
-                src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}&background=0f172a&color=cbd5e1`} 
-                className="w-14 h-14 rounded-xl border border-slate-800 object-cover" 
-                alt=""
-              />
-              <div>
-                <h3 className="text-base font-bold text-white">{member.full_name}</h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">{member.student_id}</p>
-                {member.reference && (
-                  <p className="text-[10px] text-purple-400 font-medium mt-0.5">Ref: {member.reference}</p>
-                )}
+            {/* DRAWER TOP BAR WITH CLOSE BUTTON */}
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950/50">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Attendee Check-In Management</h3>
+              </div>
+              <button 
+                onClick={() => setMember(null)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                title="Close Drawer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* DRAWER BODY: LEFT HALF (INFO) vs RIGHT HALF (CHECKBOXES) */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                
+                {/* LEFT HALF: ATTENDEE DETAILS */}
+                <div className="md:col-span-6 space-y-4 border-b md:border-b-0 md:border-r border-slate-800 pb-6 md:pb-0 md:pr-6">
+                  <div className="flex items-start gap-4">
+                    <img 
+                      src={member.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name)}&background=0f172a&color=cbd5e1`} 
+                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-slate-700 object-cover shadow-md shrink-0" 
+                      alt={member.full_name}
+                    />
+                    <div className="space-y-1">
+                      <span className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wide border ${member.is_on_spot ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
+                        {member.is_on_spot ? 'On-Spot Reg' : 'Pre-Registered'}
+                      </span>
+                      <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">{member.full_name}</h2>
+                      <p className="text-xs font-mono text-green-400 font-medium">ID: {member.student_id}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2 text-xs">
+                    {member.email && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 flex items-center gap-1.5"><Mail size={13} /> Email</span>
+                        <span className="text-slate-200 font-mono truncate max-w-[220px]">{member.email}</span>
+                      </div>
+                    )}
+                    {member.phone && (
+                      <div className="flex items-center justify-between border-t border-slate-800/80 pt-2">
+                        <span className="text-slate-400 flex items-center gap-1.5"><Phone size={13} /> Phone</span>
+                        <span className="text-slate-200 font-mono">{member.phone}</span>
+                      </div>
+                    )}
+                    {member.reference && (
+                      <div className="flex items-center justify-between border-t border-slate-800/80 pt-2">
+                        <span className="text-slate-400">Reference / Host</span>
+                        <span className="text-purple-400 font-medium">{member.reference}</span>
+                      </div>
+                    )}
+                    {member.additional_info && (
+                      <div className="flex items-center justify-between border-t border-slate-800/80 pt-2">
+                        <span className="text-slate-400">Info</span>
+                        <span className="text-slate-300">{member.additional_info}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* RIGHT HALF: CHECK-IN ACTION CHECKBOXES */}
+                <div className="md:col-span-6 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Gate Check-In Actions</h4>
+                  
+                  <div className="space-y-3">
+                    {/* GATE 1 ENTRY CHECKBOX */}
+                    <GateActBtn
+                      label="Gate Entry Check-In"
+                      active={!!member.checked_in_1}
+                      onClick={() => updateStatus('checked_in_1', !member.checked_in_1)}
+                      icon={<UserCheck size={20}/>}
+                      color="#22c55e"
+                    />
+
+                    {/* MEAL / FOOD TOKEN CHECKBOX */}
+                    <GateActBtn
+                      label="Meal / Food Token"
+                      active={!!member.token_given}
+                      onClick={() => updateStatus('token_given', !member.token_given)}
+                      icon={<Ticket size={20}/>}
+                      color="#a855f7"
+                    />
+
+                    {/* GIFT / SWAG KIT CHECKBOX */}
+                    <GateActBtn
+                      label="Gift / Swag Kit"
+                      active={!!member.checked_in_2}
+                      onClick={() => updateStatus('checked_in_2', !member.checked_in_2)}
+                      icon={<CheckCircle2 size={20}/>}
+                      color="#3b82f6"
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {member.additional_info && (
-              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
-                <span className="text-[10px] text-slate-500 font-medium">Notes</span>
-                <p className="text-slate-300 text-xs">{member.additional_info}</p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-2 pt-2 border-t border-slate-800">
-              <GateActBtn label="Check In" active={member.checked_in_1} onClick={() => updateStatus('checked_in_1')} icon={<UserCheck size={16}/>} color="#4ADE80" />
-              <GateActBtn label="Food Token" active={member.token_given} onClick={() => updateStatus('token_given')} icon={<Ticket size={16}/>} color="#D8B4FE" />
-              <GateActBtn label="Gift" active={member.checked_in_2} onClick={() => updateStatus('checked_in_2')} icon={<ScanLine size={16}/>} color="#93C5FD" />
+            {/* STICKY FOOTER */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/80 shrink-0">
+              <button
+                onClick={() => setMember(null)}
+                className="w-full py-3 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
+              >
+                Done & Close Drawer
+              </button>
             </div>
 
-            <button 
-              onClick={() => setMember(null)} 
-              className="w-full py-3 bg-slate-950 text-slate-300 rounded-xl border border-slate-800 text-xs font-medium min-h-[44px]"
-            >
-              Close Details
-            </button>
           </div>
         </div>
       )}
 
-      {/* ON-SPOT REGISTRATION MODAL WITH ALL ORIGINAL FORM FIELDS RESTORED */}
+      {/* ON-SPOT REGISTRATION MODAL */}
       {showAddModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 w-full max-w-md space-y-4 shadow-2xl text-left text-xs flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h2 className="text-base sm:text-lg font-semibold text-white flex items-center gap-2">
-                  <UserPlus size={18} className="text-purple-400" />
-                  On-Spot Registration
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Register a new attendee or guest at the gate.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <UserPlus size={18} className="text-purple-400" />
+                <h3 className="text-base font-bold text-white">On-Spot Registration</h3>
               </div>
               <button 
-                type="button" 
                 onClick={() => setShowAddModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="text-slate-400 hover:text-white p-1"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             {addError && (
-              <div className="bg-red-500/10 p-3 rounded-lg border border-red-500/30 text-red-400 text-xs text-center">
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl">
                 {addError}
               </div>
             )}
 
-            {/* GUEST / PRE-REGISTERED TOGGLE */}
-            <div 
-              className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition-colors" 
-              onClick={() => setAddForm({...addForm, isGuest: !addForm.isGuest})}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-lg ${addForm.isGuest ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                  <UserPlus size={14} />
-                </div>
+            <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: false }))}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${!addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Student
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: true }))}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Guest / Visitor
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
                 <div>
-                  <p className="text-xs font-semibold text-white">Guest Registration</p>
-                  <p className="text-[10px] text-slate-400">Enable for external guests / non-students</p>
-                </div>
-              </div>
-              <div className={`w-9 h-5 rounded-full relative transition-colors ${addForm.isGuest ? 'bg-purple-600' : 'bg-slate-800'}`}>
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${addForm.isGuest ? 'left-4' : 'left-0.5'}`}></div>
-              </div>
-            </div>
-
-            {/* FORM FIELDS SCROLL AREA */}
-            <div className="space-y-3 overflow-y-auto pr-1">
-              {/* FULL NAME */}
-              <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Full Name (Mandatory)</label>
-                <input 
-                  value={addForm.name} 
-                  onChange={e => setAddForm({...addForm, name: e.target.value})} 
-                  placeholder="e.g. Alex Vance" 
-                  required 
-                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[40px]" 
-                />
-              </div>
-
-              {/* STUDENT ID & PHONE */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-slate-300 font-medium">Student ID {!addForm.isGuest && "(Required)"}</label>
-                  <input 
-                    value={addForm.sid} 
-                    onChange={e => setAddForm({...addForm, sid: e.target.value})} 
-                    placeholder={addForm.isGuest ? "Auto-generated if blank" : "e.g. 2020101"} 
-                    required={!addForm.isGuest} 
-                    className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[40px]" 
+                  <label className="text-slate-300 font-medium">Full Name *</label>
+                  <input
+                    type="text"
+                    value={addForm.name}
+                    onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Enter full name..."
+                    required
+                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
                   />
                 </div>
-                <div className="space-y-1">
+
+                {!addForm.isGuest && (
+                  <div>
+                    <label className="text-slate-300 font-medium">Student ID *</label>
+                    <input
+                      type="text"
+                      value={addForm.sid}
+                      onChange={e => setAddForm(prev => ({ ...prev, sid: e.target.value }))}
+                      placeholder="e.g. 2020101"
+                      required
+                      className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-slate-300 font-medium">{addForm.isGuest ? 'Reference Person / Host *' : 'Reference Person / Host (Optional)'}</label>
+                  <input
+                    type="text"
+                    value={addForm.ref}
+                    onChange={e => setAddForm(prev => ({ ...prev, ref: e.target.value }))}
+                    placeholder="e.g. Dr. Rahman (Faculty Host)"
+                    required={addForm.isGuest}
+                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-medium">Email (Optional)</label>
+                  <input
+                    type="email"
+                    value={addForm.email}
+                    onChange={e => setAddForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="email@example.com"
+                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
+                  />
+                </div>
+
+                <div>
                   <label className="text-slate-300 font-medium">Phone (Optional)</label>
-                  <input 
-                    value={addForm.phone} 
-                    onChange={e => setAddForm({...addForm, phone: e.target.value})} 
-                    placeholder="+880..." 
-                    className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[40px]" 
+                  <input
+                    type="text"
+                    value={addForm.phone}
+                    onChange={e => setAddForm(prev => ({ ...prev, phone: e.target.value }))}
+                    placeholder="Phone number..."
+                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
                   />
                 </div>
               </div>
 
-              {/* EMAIL ADDRESS */}
-              <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Email Address (Optional)</label>
-                <input 
-                  value={addForm.email} 
-                  onChange={e => setAddForm({...addForm, email: e.target.value})} 
-                  placeholder="alex@iub.edu.bd" 
-                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[40px]" 
-                />
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all min-h-[44px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
+                >
+                  Register On-Spot
+                </button>
               </div>
-
-              {/* REFERENCE / ORG (MANDATORY FOR GUEST) */}
-              {addForm.isGuest && (
-                <div className="space-y-1 animate-in fade-in duration-200">
-                  <label className="text-purple-400 font-medium">Reference / Organization (Mandatory)</label>
-                  <input 
-                    value={addForm.ref} 
-                    onChange={e => setAddForm({...addForm, ref: e.target.value})} 
-                    placeholder="e.g. Guest of Dean / Club VIP" 
-                    required={addForm.isGuest} 
-                    className="w-full bg-slate-950 border border-purple-500/40 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[40px]" 
-                  />
-                </div>
-              )}
-
-              {/* ADDITIONAL INFO / NOTES */}
-              <div className="space-y-1">
-                <label className="text-slate-300 font-medium">Additional Info / Notes (Optional)</label>
-                <textarea 
-                  value={addForm.info} 
-                  onChange={e => setAddForm({...addForm, info: e.target.value})} 
-                  placeholder="e.g. Department, VIP Guest notes, etc." 
-                  className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs text-white outline-none focus:border-purple-500 min-h-[60px] resize-none" 
-                />
-              </div>
-            </div>
-
-            {/* MODAL FOOTER */}
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-              <button 
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 bg-slate-950 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium min-h-[40px]"
-              >
-                Cancel
-              </button>
-              <button 
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-medium rounded-lg text-xs transition-all shadow-md min-h-[40px]"
-              >
-                Add Attendee
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* POST-REGISTRATION PROMPT MODAL */}
+      {/* INSTANT CHECK-IN PROMPT MODAL */}
       {showPromptModal && pendingAttendee && (
-        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm text-center space-y-4 shadow-2xl text-xs">
-            <div className="w-12 h-12 bg-green-500/10 rounded-full flex items-center justify-center mx-auto text-green-400 border border-green-500/20">
-              <UserCheck size={24} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-purple-500/30 rounded-2xl w-full max-w-md p-6 text-center space-y-4 shadow-2xl">
+            <div className="w-14 h-14 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center mx-auto">
+              <CheckCircle2 size={32} />
             </div>
-            <div>
-              <h3 className="text-base font-semibold text-white">Registration Complete</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{pendingAttendee.full_name}</p>
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-white">Attendee Registered</h3>
+              <p className="text-xs text-slate-400">
+                <span className="text-white font-semibold">{pendingAttendee.full_name}</span> has been added. Would you like to check them in right now?
+              </p>
             </div>
-            <p className="text-slate-300">Would you like to check in this attendee now?</p>
-            
+
             <div className="flex gap-2 pt-2">
-              <button 
-                onClick={() => handlePromptDecision(false)}
-                className="flex-1 py-2.5 bg-slate-950 border border-slate-800 text-slate-300 rounded-lg text-xs font-medium min-h-[44px]"
+              <button
+                onClick={() => handlePromptAction(false)}
+                className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 rounded-xl text-xs font-medium transition-all min-h-[44px]"
               >
-                Not Now
+                No, Just Register
               </button>
-              <button 
-                onClick={() => handlePromptDecision(true)}
-                className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 min-h-[44px]"
+              <button
+                onClick={() => handlePromptAction(true)}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
               >
-                <CheckCircle2 size={14} /> Check In
+                Yes, Check In Now
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog } from '../api/attendees';
+import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, insertAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { 
   CheckCircle2, XCircle, Calendar, Clock, 
-  ArrowLeft, UserCheck, RefreshCw, IdCard, Delete, Keyboard, Smartphone
+  ArrowLeft, UserCheck, RefreshCw, IdCard, Delete, Keyboard, Smartphone, UserPlus, User, Users
 } from 'lucide-react';
 
 const SelfEntryKiosk = () => {
@@ -20,6 +20,12 @@ const SelfEntryKiosk = () => {
   const [activeAttendee, setActiveAttendee] = useState(null);
   const [resultStatus, setResultStatus] = useState(null); // 'success' | 'not_found' | 'already_checked_in'
   const [inputMode, setInputMode] = useState('keyboard'); // 'keyboard' | 'touch'
+  const [allowOnSpot, setAllowOnSpot] = useState(true);
+  const [showOnSpotForm, setShowOnSpotForm] = useState(false);
+  const [onSpotTab, setOnSpotTab] = useState('student'); // 'student' | 'guest'
+  const [onSpotData, setOnSpotData] = useState({ name: '', studentId: '', reference: '' });
+  const [onSpotError, setOnSpotError] = useState('');
+  const [submittingOnSpot, setSubmittingOnSpot] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [adminEmail, setAdminEmail] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -75,6 +81,9 @@ const SelfEntryKiosk = () => {
   const resetKiosk = () => {
     setActiveAttendee(null);
     setResultStatus(null);
+    setShowOnSpotForm(false);
+    setOnSpotError('');
+    setOnSpotData({ name: '', studentId: '', reference: '' });
     setStudentIdInput('');
     setCountdown(0);
     if (inputMode === 'keyboard' && inputRef.current) inputRef.current.focus();
@@ -119,10 +128,75 @@ const SelfEntryKiosk = () => {
     } else {
       setActiveAttendee(null);
       setResultStatus('not_found');
-      setCountdown(4);
+      setOnSpotData(prev => ({ ...prev, studentId: query }));
+      setCountdown(10); // Extra time to choose on-spot option
     }
 
     setProcessing(false);
+  };
+
+  // Handle On-Spot Registration Submission
+  const handleOnSpotSubmit = async (e) => {
+    e.preventDefault();
+    setOnSpotError('');
+
+    const name = onSpotData.name.trim();
+    if (!name) {
+      setOnSpotError('Please enter full name.');
+      return;
+    }
+
+    let finalStudentId = '';
+    let finalReference = null;
+
+    if (onSpotTab === 'student') {
+      finalStudentId = onSpotData.studentId.trim() || studentIdInput.trim();
+      if (!finalStudentId) {
+        setOnSpotError('Please enter Student ID.');
+        return;
+      }
+    } else {
+      finalReference = onSpotData.reference.trim();
+      if (!finalReference) {
+        setOnSpotError('Please enter reference person or host name.');
+        return;
+      }
+      finalStudentId = `GUEST-${Date.now().toString().slice(-6)}`;
+    }
+
+    setSubmittingOnSpot(true);
+
+    const { data, error } = await insertAttendee({
+      event_id: eventId,
+      full_name: name,
+      student_id: finalStudentId,
+      reference: finalReference,
+      is_on_spot: true,
+      checked_in_1: true
+    });
+
+    if (error || !data || !data[0]) {
+      console.error("On-Spot Reg Error:", error);
+      setOnSpotError('Registration failed. Please check with gate staff.');
+      setSubmittingOnSpot(false);
+      return;
+    }
+
+    const newMember = data[0];
+    await insertEntryLog({
+      attendee_id: newMember.id,
+      event_id: eventId,
+      action_type: 'checked_in_1',
+      status: true,
+      admin_email: adminEmail || 'kiosk-onspot'
+    });
+
+    setAttendees(prev => [newMember, ...prev]);
+    setActiveAttendee(newMember);
+    setResultStatus('success');
+    setShowOnSpotForm(false);
+    setCountdown(5);
+    setSubmittingOnSpot(false);
   };
 
   // Touch Keypad press handler
@@ -311,8 +385,11 @@ const SelfEntryKiosk = () => {
                 </span>
                 <h2 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">{activeAttendee.full_name}</h2>
                 <p className="text-sm font-mono text-green-400 font-medium flex items-center justify-center gap-1.5 pt-0.5">
-                  <IdCard size={15} /> Student ID: {activeAttendee.student_id}
+                  <IdCard size={15} /> {activeAttendee.student_id?.startsWith('GUEST') ? 'Guest ID:' : 'Student ID:'} {activeAttendee.student_id}
                 </p>
+                {activeAttendee.reference && (
+                  <p className="text-xs text-slate-400 font-medium">Ref: {activeAttendee.reference}</p>
+                )}
               </div>
 
               {/* ATTENDEE BADGE DETAILS */}
@@ -355,43 +432,173 @@ const SelfEntryKiosk = () => {
             </div>
           )}
 
-          {/* NOT FOUND ERROR CARD */}
+          {/* NOT FOUND ERROR CARD & ON-SPOT REGISTRATION FORM */}
           {resultStatus === 'not_found' && (
-            <div className="bg-slate-900 border border-red-500/30 p-6 sm:p-8 rounded-2xl space-y-6 shadow-xl text-center">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
-                <XCircle size={40} />
-              </div>
+            <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-2xl space-y-5 shadow-xl text-center">
+              {!showOnSpotForm ? (
+                /* INITIAL NOT FOUND ALERT */
+                <div className="space-y-5">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                    <XCircle size={40} />
+                  </div>
 
-              <div className="space-y-1.5">
-                <span className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-red-500/10 border border-red-500/30 text-red-400">
-                  ID Not Found
-                </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">No Attendee Found</h2>
-                <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-                  No record matching <span className="text-white font-mono font-bold">"{studentIdInput}"</span> was found. Please see staff at Gate Control for assistance.
-                </p>
-              </div>
+                  <div className="space-y-1.5">
+                    <span className="inline-block px-3 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                      ID Not Found
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white">No Attendee Found</h2>
+                    <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+                      No record matching <span className="text-white font-mono font-bold">"{studentIdInput}"</span> was found.
+                    </p>
+                  </div>
 
-              {/* COUNTDOWN RESET PROGRESS BAR */}
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <div className="flex justify-between text-xs text-slate-400">
-                  <span>Resetting...</span>
-                  <span className="font-mono text-white font-semibold">{countdown}s</span>
+                  {allowOnSpot && (
+                    <div className="pt-3 border-t border-slate-800 space-y-3">
+                      <p className="text-xs text-slate-300 font-medium">Not registered for this event yet?</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowOnSpotForm(true)}
+                        className="w-full py-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-md min-h-[44px]"
+                      >
+                        <UserPlus size={16} />
+                        <span>Register On-Spot Now</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* COUNTDOWN RESET PROGRESS BAR */}
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span>Resetting...</span>
+                      <span className="font-mono text-white font-semibold">{countdown}s</span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div 
+                        className="bg-amber-500 h-full transition-all duration-1000 ease-linear"
+                        style={{ width: `${(countdown / 10) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={resetKiosk}
+                    className="w-full py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-all min-h-[44px]"
+                  >
+                    Try Again
+                  </button>
                 </div>
-                <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                  <div 
-                    className="bg-red-500 h-full transition-all duration-1000 ease-linear"
-                    style={{ width: `${(countdown / 4) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
+              ) : (
+                /* ON-SPOT SELF REGISTRATION FORM (STUDENT & GUEST MODES) */
+                <form onSubmit={handleOnSpotSubmit} className="space-y-4 text-left">
+                  <div className="text-center space-y-1 pb-2 border-b border-slate-800">
+                    <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2">
+                      <UserPlus size={18} className="text-purple-400" />
+                      On-Spot Self Registration
+                    </h3>
+                    <p className="text-xs text-slate-400">Select attendee type to register and check in</p>
+                  </div>
 
-              <button
-                onClick={resetKiosk}
-                className="w-full py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium transition-all min-h-[44px]"
-              >
-                Try Again
-              </button>
+                  {onSpotError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-xl font-medium text-center">
+                      {onSpotError}
+                    </div>
+                  )}
+
+                  {/* STUDENT VS GUEST TAB SWITCHER */}
+                  <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setOnSpotTab('student')}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[38px] ${onSpotTab === 'student' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      <User size={14} />
+                      <span>Student</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOnSpotTab('guest')}
+                      className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all min-h-[38px] ${onSpotTab === 'guest' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      <Users size={14} />
+                      <span>Guest / Visitor</span>
+                    </button>
+                  </div>
+
+                  {/* STUDENT FORM FIELDS */}
+                  {onSpotTab === 'student' ? (
+                    <div className="space-y-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-300 font-medium">Student ID *</label>
+                        <input
+                          type="text"
+                          value={onSpotData.studentId}
+                          onChange={(e) => setOnSpotData(prev => ({ ...prev, studentId: e.target.value }))}
+                          placeholder="e.g. 2020101"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs font-mono text-white placeholder:text-slate-600 outline-none min-h-[44px]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-300 font-medium">Student Full Name *</label>
+                        <input
+                          type="text"
+                          value={onSpotData.name}
+                          onChange={(e) => setOnSpotData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter student full name..."
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none min-h-[44px]"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    /* GUEST FORM FIELDS */
+                    <div className="space-y-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-300 font-medium">Guest Full Name *</label>
+                        <input
+                          type="text"
+                          value={onSpotData.name}
+                          onChange={(e) => setOnSpotData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter guest full name..."
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none min-h-[44px]"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs text-slate-300 font-medium">Reference Person / Host *</label>
+                        <input
+                          type="text"
+                          value={onSpotData.reference}
+                          onChange={(e) => setOnSpotData(prev => ({ ...prev, reference: e.target.value }))}
+                          placeholder="e.g. Dr. Rahman (Faculty Host)"
+                          required
+                          className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 p-3 rounded-xl text-xs text-white placeholder:text-slate-600 outline-none min-h-[44px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowOnSpotForm(false)}
+                      className="flex-1 py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all min-h-[44px]"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingOnSpot}
+                      className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-md min-h-[44px]"
+                    >
+                      {submittingOnSpot ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                      <span>Complete & Check In</span>
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
         </div>

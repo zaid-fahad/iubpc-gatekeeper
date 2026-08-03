@@ -44,7 +44,7 @@ export const bulkInsertAttendees = async (attendeesData) => {
   return supabase.from('attendees').insert(attendeesData);
 };
 
-import { getValidIrasToken } from './iras';
+import { getValidIrasToken, irasFetch } from './iras';
 
 /**
  * Fetches student details from official Student Info API.
@@ -54,7 +54,9 @@ export const fetchStudentInfoFromExternalApi = async (studentId) => {
   // Obtain valid token (auto-login if token is missing or expired)
   const token = await getValidIrasToken();
 
-  const res = await fetch(`https://irastools.pages.dev/api/student/${studentId}`, {
+  const targetUrl = `https://irastools.pages.dev/api/student/${studentId}`;
+
+  const res = await irasFetch(targetUrl, {
     headers: {
       'Authorization': token,
       'Content-Type': 'application/json'

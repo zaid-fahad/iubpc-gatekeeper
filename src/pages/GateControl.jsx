@@ -139,9 +139,10 @@ const GateControl = () => {
       setError("");
       const timer = setTimeout(() => {
         const readerEl = document.getElementById("gate-reader");
-        if (readerEl && window.Html5Qrcode) {
+        const QrScanner = window.Html5Qrcode;
+        if (readerEl && QrScanner) {
           try {
-            const html5QrCode = new window.Html5Qrcode("gate-reader");
+            const html5QrCode = new QrScanner("gate-reader");
             html5QrCodeRef.current = html5QrCode;
             html5QrCode.start(
               { facingMode: "environment" }, 

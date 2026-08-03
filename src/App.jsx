@@ -20,6 +20,7 @@ import GateControl from './pages/GateControl';
 import GuestListPortal from './pages/GuestListPortal';
 import EventAnalytics from './pages/EventAnalytics';
 import SelfEntryKiosk from './pages/SelfEntryKiosk';
+import IrasApiConfig from './pages/IrasApiConfig';
 
 const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
   const location = useLocation();
@@ -73,6 +74,17 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
             <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
               <AppLayout userRole={userRole}>
                 <OperatorManifest />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/settings/iras" 
+          element={
+            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
+              <AppLayout userRole={userRole}>
+                <IrasApiConfig />
               </AppLayout>
             </ProtectedRoute>
           } 

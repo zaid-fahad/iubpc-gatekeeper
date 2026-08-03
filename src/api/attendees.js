@@ -52,33 +52,52 @@ import { getValidIrasToken, irasFetch } from './iras';
  */
 export const fetchStudentInfoFromExternalApi = async (studentId) => {
   // Obtain valid token (auto-login if token is missing or expired)
-  const token = await getValidIrasToken();
+  const rawToken = await getValidIrasToken();
+  const cleanToken = rawToken.replace(/^Bearer\s+/i, '').trim();
 
   const targetUrl = `https://irastools.pages.dev/api/student/${studentId}`;
 
-  const res = await irasFetch(targetUrl, {
-    headers: {
-      'Authorization': token,
-      'Content-Type': 'application/json'
-    }
-  });
+  // Try clean raw token first, then Bearer token format
+  const authHeaders = [
+    cleanToken,
+    `Bearer ${cleanToken}`
+  ];
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error(`IRAS API Authentication Failed (401). Please check credentials in Settings.`);
-    } else if (res.status === 404) {
-      throw new Error(`Student ID ${studentId} not found in IRAS database (404).`);
-    } else {
-      throw new Error(`Student API error (HTTP Status ${res.status}).`);
+  let res = null;
+  let lastErr = null;
+  let responseData = null;
+
+  for (const authValue of authHeaders) {
+    try {
+      res = await irasFetch(targetUrl, {
+        headers: {
+          'Authorization': authValue,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json && json.data) {
+        responseData = json.data;
+        break;
+      }
+
+      if (json && json.error) {
+        lastErr = new Error(`Student API Error: ${json.error}`);
+      } else if (res && !res.ok) {
+        lastErr = new Error(`Student API error (Status ${res.status}).`);
+      }
+    } catch (e) {
+      lastErr = e;
     }
   }
 
-  const json = await res.json();
-  const data = json?.data;
-  
-  if (!data || !data.studentName) {
-    throw new Error(`Student record not found for ID ${studentId}.`);
+  if (!responseData) {
+    throw lastErr || new Error(`Unable to fetch student info for ID ${studentId}.`);
   }
+
+  const data = responseData;
 
   const deptInfo = [
     data.departmentName ? `Dept: ${data.departmentName}` : null,
@@ -88,7 +107,7 @@ export const fetchStudentInfoFromExternalApi = async (studentId) => {
 
   return {
     student_id: data.studentId || studentId,
-    full_name: data.studentName,
+    full_name: data.studentName || `Student (${studentId})`,
     email: data.email || `${studentId}@iub.edu.bd`,
     phone: data.cellPhone || '',
     additional_info: deptInfo

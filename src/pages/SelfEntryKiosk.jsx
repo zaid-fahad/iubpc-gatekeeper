@@ -68,15 +68,16 @@ const SelfEntryKiosk = () => {
     }
   }, [loading, activeAttendee, resultStatus, inputMode]);
 
-  // Reset Countdown
+  // Reset Countdown (Pauses while user is filling out On-Spot form)
   useEffect(() => {
+    if (showOnSpotForm) return;
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
     } else if (countdown === 0 && (activeAttendee || resultStatus)) {
       resetKiosk();
     }
-  }, [countdown, activeAttendee, resultStatus]);
+  }, [countdown, activeAttendee, resultStatus, showOnSpotForm]);
 
   const resetKiosk = () => {
     setActiveAttendee(null);

@@ -7,4 +7,20 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/api/iras-auth': {
+        target: 'https://iras-auth.pages.dev',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/iras-auth/, '/api'),
+      },
+      '/api/iras-student': {
+        target: 'https://irastools.pages.dev',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/iras-student/, '/api'),
+      },
+    },
+  },
 })

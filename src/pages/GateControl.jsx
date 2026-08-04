@@ -3,17 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { 
   QrCode, Users, Phone, Mail, X, ChevronLeft, IdCard, CheckCircle2, 
   UserCheck, Ticket, ScanLine, Search, History, Clock, UserPlus, 
-  TrendingUp, AlertCircle, Sparkles
+  TrendingUp, AlertCircle, Sparkles, Pencil, Trash2, ShieldCheck
 } from 'lucide-react';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee } from '../api/attendees';
+import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee, updateAttendee, deleteAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
 import GateActBtn from '../components/GateActBtn';
 import LoadingSpinner from '../components/LoadingSpinner';
 import StatCard from '../components/StatCard';
 import { supabase } from '../lib/supabase';
 
-const GateControl = () => {
+const GateControl = ({ userRole }) => {
   const { id: eventId } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
@@ -28,12 +28,68 @@ const GateControl = () => {
   const [adminEmail, setAdminEmail] = useState("");
   const html5QrCodeRef = useRef(null);
 
-  // On-spot registration states
+  // Admin Attendee Management States
+  const isAdmin = userRole === 'admin';
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', email: '', sid: '', phone: '', info: '', ref: '', isGuest: false });
   const [addError, setAddError] = useState("");
   const [showPromptModal, setShowPromptModal] = useState(false);
   const [pendingAttendee, setPendingAttendee] = useState(null);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', sid: '', email: '', phone: '', ref: '', info: '' });
+
+  const openEditAttendeeModal = () => {
+    if (!member) return;
+    setEditForm({
+      name: member.full_name || '',
+      sid: member.student_id || '',
+      email: member.email || '',
+      phone: member.phone || '',
+      ref: member.reference || '',
+      info: member.additional_info || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateAttendee = async (e) => {
+    e.preventDefault();
+    if (!member || !editForm.name.trim()) return;
+
+    const updates = {
+      full_name: editForm.name.trim(),
+      student_id: editForm.sid.trim(),
+      email: editForm.email.trim() || null,
+      phone: editForm.phone.trim() || null,
+      reference: editForm.ref.trim() || null,
+      additional_info: editForm.info.trim() || null
+    };
+
+    const { error } = await updateAttendee(member.id, updates);
+    if (!error) {
+      const updatedMember = { ...member, ...updates };
+      setMember(updatedMember);
+      setAttendees(prev => prev.map(a => a.id === member.id ? updatedMember : a));
+      setShowEditModal(false);
+    } else {
+      setError("Failed to update attendee: " + error.message);
+    }
+  };
+
+  const handleDeleteAttendee = async () => {
+    if (!member) return;
+    if (!window.confirm(`Are you sure you want to delete "${member.full_name}" (${member.student_id})? This will delete all entry records for this attendee.`)) {
+      return;
+    }
+
+    const { error } = await deleteAttendee(member.id);
+    if (!error) {
+      setAttendees(prev => prev.filter(a => a.id !== member.id));
+      setMember(null);
+    } else {
+      setError("Failed to delete attendee: " + error.message);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -552,19 +608,41 @@ const GateControl = () => {
         <div className="fixed inset-0 z-[300] flex flex-col justify-end bg-slate-950/80 backdrop-blur-md p-0 sm:p-4 overflow-hidden animate-in fade-in duration-200">
           <div className="w-full max-w-5xl mx-auto bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
             
-            {/* DRAWER TOP BAR WITH CLOSE BUTTON */}
+            {/* DRAWER TOP BAR WITH CLOSE BUTTON & ADMIN ACTIONS */}
             <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950/50">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
                 <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Attendee Check-In Management</h3>
               </div>
-              <button 
-                onClick={() => setMember(null)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-                title="Close Drawer"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={openEditAttendeeModal}
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      title="Edit Attendee Info"
+                    >
+                      <Pencil size={15} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                    <button
+                      onClick={handleDeleteAttendee}
+                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-600/20 text-slate-300 hover:text-red-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      title="Delete Attendee"
+                    >
+                      <Trash2 size={15} />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </>
+                )}
+                <button 
+                  onClick={() => setMember(null)}
+                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                  title="Close Drawer"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* DRAWER BODY: LEFT HALF (INFO) vs RIGHT HALF (CHECKBOXES) */}
@@ -819,6 +897,103 @@ const GateControl = () => {
                 Yes, Check In Now
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN EDIT ATTENDEE MODAL */}
+      {showEditModal && member && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl text-left">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Pencil size={16} className="text-blue-400" />
+                Edit Attendee Details
+              </h3>
+              <button onClick={() => setShowEditModal(false)} className="p-1 text-slate-400 hover:text-white">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateAttendee} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-300 font-medium">Full Name *</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-medium">Student ID *</label>
+                <input
+                  type="text"
+                  value={editForm.sid}
+                  onChange={e => setEditForm(prev => ({ ...prev, sid: e.target.value }))}
+                  required
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-medium">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-medium">Phone</label>
+                <input
+                  type="text"
+                  value={editForm.phone}
+                  onChange={e => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-medium">Reference Person / Host</label>
+                <input
+                  type="text"
+                  value={editForm.ref}
+                  onChange={e => setEditForm(prev => ({ ...prev, ref: e.target.value }))}
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-medium">Additional Info</label>
+                <input
+                  type="text"
+                  value={editForm.info}
+                  onChange={e => setEditForm(prev => ({ ...prev, info: e.target.value }))}
+                  className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-blue-500 min-h-[44px]"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 rounded-xl text-xs font-medium min-h-[44px]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold min-h-[44px]"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -43,3 +43,12 @@ export const insertAttendee = async (attendeeData) => {
 export const bulkInsertAttendees = async (attendeesData) => {
   return supabase.from('attendees').insert(attendeesData);
 };
+
+export const updateAttendee = async (id, updates) => {
+  return supabase.from('attendees').update(updates).eq('id', id);
+};
+
+export const deleteAttendee = async (id) => {
+  await supabase.from('entry_logs').delete().eq('attendee_id', id);
+  return supabase.from('attendees').delete().eq('id', id);
+};

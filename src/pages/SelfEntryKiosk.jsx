@@ -473,7 +473,7 @@ const SelfEntryKiosk = () => {
                     </p>
                   </div>
 
-                  {allowOnSpot && (
+                  {allowOnSpot ? (
                     <div className="pt-3 border-t border-slate-800 space-y-3">
                       <p className="text-xs text-slate-300 font-medium">Not registered for this event yet?</p>
                       <button
@@ -484,6 +484,12 @@ const SelfEntryKiosk = () => {
                         <UserPlus size={16} />
                         <span>Register On-Spot Now</span>
                       </button>
+                    </div>
+                  ) : (
+                    <div className="pt-3 border-t border-slate-800">
+                      <p className="text-xs text-slate-400 italic bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        On-Spot Registration is disabled by Admin for this event.
+                      </p>
                     </div>
                   )}
 

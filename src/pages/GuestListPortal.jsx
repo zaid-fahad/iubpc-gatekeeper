@@ -1,20 +1,69 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X } from 'lucide-react';
+import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, insertAttendee, bulkInsertAttendees } from '../api/attendees';
+import { fetchEventAttendees, insertAttendee, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-const GuestListPortal = () => {
+const GuestListPortal = ({ userRole }) => {
   const { id: eventId } = useParams();
   const navigate = useNavigate();
+  const isAdmin = userRole === 'admin';
   const [event, setEvent] = useState(null);
   const [attendees, setAttendees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', sid: '', img: '', phone: '', ref: '' });
+
+  const [editingAttendee, setEditingAttendee] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', sid: '', phone: '', ref: '' });
+
+  const openEditModal = (att) => {
+    setEditingAttendee(att);
+    setEditForm({
+      name: att.full_name || '',
+      email: att.email || '',
+      sid: att.student_id || '',
+      phone: att.phone || '',
+      ref: att.reference || ''
+    });
+  };
+
+  const handleUpdateAttendee = async (e) => {
+    e.preventDefault();
+    if (!editingAttendee || !editForm.name.trim()) return;
+
+    const updates = {
+      full_name: editForm.name.trim(),
+      student_id: editForm.sid.trim(),
+      email: editForm.email.trim() || null,
+      phone: editForm.phone.trim() || null,
+      reference: editForm.ref.trim() || null
+    };
+
+    const { error } = await updateAttendee(editingAttendee.id, updates);
+    if (!error) {
+      setAttendees(prev => prev.map(a => a.id === editingAttendee.id ? { ...a, ...updates } : a));
+      setEditingAttendee(null);
+    } else {
+      alert("Failed to update attendee: " + error.message);
+    }
+  };
+
+  const handleDeleteAttendee = async (att) => {
+    if (!window.confirm(`Are you sure you want to delete "${att.full_name}" (${att.student_id})?`)) {
+      return;
+    }
+
+    const { error } = await deleteAttendee(att.id);
+    if (!error) {
+      setAttendees(prev => prev.filter(a => a.id !== att.id));
+    } else {
+      alert("Failed to delete attendee: " + error.message);
+    }
+  };
 
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
@@ -189,6 +238,7 @@ const GuestListPortal = () => {
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Gift</th>
+                      {isAdmin && <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
@@ -219,6 +269,26 @@ const GuestListPortal = () => {
                         <td className="p-6 text-center">
                           <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.checked_in_2 ? 'bg-blue-500 shadow-blue-500/40' : 'bg-slate-800'}`}></div>
                         </td>
+                        {isAdmin && (
+                          <td className="p-6 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => openEditModal(row)}
+                                className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-xl transition-all"
+                                title="Edit Attendee"
+                              >
+                                <Pencil size={15} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAttendee(row)}
+                                className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500/50 text-slate-300 hover:text-red-400 rounded-xl transition-all"
+                                title="Delete Attendee"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -229,6 +299,8 @@ const GuestListPortal = () => {
         )}
         {!loading && filtered.length === 0 && <div className="text-center py-20 opacity-20 italic font-black uppercase text-xs tracking-[0.5em]">No attendees found</div>}
       </main>
+
+      {/* MANUAL REGISTRATION MODAL */}
       {showAdd && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300 italic">
             <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
@@ -242,6 +314,47 @@ const GuestListPortal = () => {
                     <input value={form.img} onChange={e => setForm({...form, img: e.target.value})} placeholder="IMAGE URL" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
                 </div>
                 <button className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic">CONFIRM ATTENDEE</button>
+            </form>
+        </div>
+      )}
+
+      {/* EDIT ATTENDEE MODAL */}
+      {editingAttendee && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300">
+            <form onSubmit={handleUpdateAttendee} className="relative bg-slate-900 border border-slate-800 rounded-[3rem] p-8 sm:p-10 w-full max-w-md space-y-5 shadow-2xl text-left">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Pencil size={18} className="text-blue-400" />
+                    Edit Attendee Details
+                  </h2>
+                  <X className="text-slate-500 cursor-pointer hover:text-white transition-colors" onClick={() => setEditingAttendee(null)} />
+                </div>
+                <div className="space-y-3.5 text-xs">
+                    <div>
+                      <label className="text-slate-300 font-medium">Full Name *</label>
+                      <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="FULL NAME" required className="w-full mt-1 bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-slate-300 font-medium">Student ID *</label>
+                      <input value={editForm.sid} onChange={e => setEditForm({...editForm, sid: e.target.value})} placeholder="STUDENT ID" required className="w-full mt-1 bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-xs font-mono text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-slate-300 font-medium">Email Address</label>
+                      <input value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} placeholder="EMAIL ADDRESS" className="w-full mt-1 bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-xs font-mono text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-slate-300 font-medium">Phone Number</label>
+                      <input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="PHONE NUMBER" className="w-full mt-1 bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-xs font-mono text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="text-slate-300 font-medium">Reference Person / Host</label>
+                      <input value={editForm.ref} onChange={e => setEditForm({...editForm, ref: e.target.value})} placeholder="REFERENCE" className="w-full mt-1 bg-slate-950 border border-slate-800 p-3.5 rounded-xl text-xs font-bold text-white outline-none focus:border-blue-500" />
+                    </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="button" onClick={() => setEditingAttendee(null)} className="flex-1 py-3 bg-slate-950 border border-slate-800 text-slate-300 rounded-xl text-xs font-medium min-h-[44px]">Cancel</button>
+                  <button type="submit" className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all min-h-[44px]">Save Changes</button>
+                </div>
             </form>
         </div>
       )}

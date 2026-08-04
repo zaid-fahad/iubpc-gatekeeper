@@ -4,7 +4,7 @@ import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Tras
 import Papa from 'papaparse';
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, insertAttendee, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { LoadingSpinner } from '../components';
 
 const GuestListPortal = ({ userRole }) => {
   const { id: eventId } = useParams();

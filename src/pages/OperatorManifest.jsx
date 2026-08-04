@@ -4,7 +4,7 @@ import {
   Users, UserPlus, Search, Filter, Shield, Key, RefreshCw, Plus, 
   UserCheck, ChevronUp, Settings, X, Lock, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Check
 } from 'lucide-react';
-import StatCard from '../components/StatCard';
+import { StatCard } from '../components';
 
 const OperatorManifest = () => {
   const [users, setUsers] = useState([]);

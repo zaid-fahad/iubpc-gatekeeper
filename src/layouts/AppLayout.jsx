@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { signOut } from '../api/auth';
 import { 
   LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
@@ -148,7 +148,7 @@ const AppLayout = ({ children, userRole }) => {
       {/* Main Content Area */}
       <main className="flex-1 min-h-screen relative flex flex-col">
         <div className="w-full max-w-[1600px] mx-auto p-4 md:p-10 pb-32 md:pb-12 flex-grow">
-          {children}
+          {children || <Outlet />}
         </div>
         
         {/* Footer */}

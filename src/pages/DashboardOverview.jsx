@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchEvents as fetchEventsApi } from '../api/events';
 import { fetchAllUsers } from '../api/auth';
-import StatCard from '../components/StatCard';
+import { StatCard } from '../components';
 import { 
   Calendar, ArrowRight, Users, RefreshCw, CheckCircle2, 
   Play, ShieldCheck, LayoutDashboard, Plus, ArrowUpRight, Activity
@@ -98,7 +98,7 @@ const DashboardOverview = ({ userRole }) => {
           <button
             onClick={() => {
               if (latestActiveEvent) {
-                navigate(`/event/${latestActiveEvent.id}/gate`);
+                navigate(`/events/${latestActiveEvent.id}/gate`);
               } else {
                 navigate('/events');
               }
@@ -212,7 +212,7 @@ const DashboardOverview = ({ userRole }) => {
 
               <div className="flex gap-2 pt-2 border-t border-slate-800">
                 <button 
-                  onClick={() => navigate(`/event/${ev.id}/gate`)}
+                  onClick={() => navigate(`/events/${ev.id}/gate`)}
                   disabled={!ev.is_active}
                   className="flex-1 py-2.5 px-3 bg-green-600 hover:bg-green-500 text-white rounded-lg text-xs font-semibold transition-all disabled:opacity-40 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 min-h-[40px]"
                 >
@@ -220,7 +220,7 @@ const DashboardOverview = ({ userRole }) => {
                   <ArrowRight size={13} />
                 </button>
                 <button 
-                  onClick={() => navigate(`/event/${ev.id}/guests`)}
+                  onClick={() => navigate(`/events/${ev.id}/guests`)}
                   className="py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 min-h-[40px]"
                 >
                   <span>Attendees</span>

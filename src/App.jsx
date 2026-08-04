@@ -1,129 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { 
-  getSession, 
-  checkAdminStatus, 
-  onAuthStateChange 
-} from './api/auth';
-
-// Components
-import LoadingSpinner from './components/LoadingSpinner';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import AppLayout from './components/AppLayout';
-
-// Pages
-import AuthScreen from './pages/AuthScreen';
-import DashboardOverview from './pages/DashboardOverview';
-import EventRegistry from './pages/EventRegistry';
-import OperatorManifest from './pages/OperatorManifest';
-import GateControl from './pages/GateControl';
-import GuestListPortal from './pages/GuestListPortal';
-import EventAnalytics from './pages/EventAnalytics';
-import SelfEntryKiosk from './pages/SelfEntryKiosk';
-
-const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
-  const location = useLocation();
-
-  if (loading) return <LoadingSpinner />;
-
-  const isAuthorized = (isAdmin || isVolunteer) && isActive;
-  const userRole = isAdmin ? 'admin' : 'volunteer';
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-green-500/30 selection:text-slate-950 italic">
-      <Routes>
-        {/* Public Route */}
-        <Route 
-          path="/login" 
-          element={
-            !user ? (
-              <AuthScreen />
-            ) : (
-              <Navigate to={location.state?.from?.pathname || "/events"} replace />
-            )
-          } 
-        />
-
-        {/* Protected Routes wrapped in AppLayout */}
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <DashboardOverview userRole={userRole} />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/events" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <EventRegistry userRole={userRole} />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        <Route 
-          path="/operators" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <OperatorManifest />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Event Specific Routes */}
-        <Route 
-          path="/event/:id/gate" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <GateControl userRole={userRole} />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/event/:id/guests" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <GuestListPortal userRole={userRole} />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/event/:id/analytics" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
-              <AppLayout userRole={userRole}>
-                <EventAnalytics />
-              </AppLayout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/event/:id/kiosk" 
-          element={
-            <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
-              <SelfEntryKiosk />
-            </ProtectedRoute>
-          } 
-        />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
-  );
-};
+import { BrowserRouter } from 'react-router-dom';
+import { getSession, checkAdminStatus, onAuthStateChange } from './api/auth';
+import { AppRoutes } from './routes';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -131,7 +9,7 @@ export default function App() {
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Memoize the admin check to prevent unnecessary re-runs
+  // Memoize admin check to prevent unnecessary re-runs
   const verifyUserRole = useCallback(async (email) => {
     if (!email) return { role: null, active: false };
     try {
@@ -173,7 +51,6 @@ export default function App() {
         if (!isMounted) return;
 
         if (session) {
-          // Only re-verify if the user changed or on explicit sign in
           setUser(prevUser => {
             if (prevUser?.id !== session.user.id || event === 'SIGNED_IN') {
               verifyUserRole(session.user.email).then(({ role, active }) => {

@@ -49,9 +49,28 @@ export const removeUser = async (email) => {
 };
 
 export const resetPassword = async (email) => {
+  let redirectUrl = `${window.location.origin}/login`;
+  try {
+    const siteUrl = import.meta.env.VITE_SITE_URL;
+    if (siteUrl && siteUrl.trim().length > 0) {
+      redirectUrl = `${siteUrl.trim().replace(/\/$/, '')}/login`;
+    }
+  } catch {}
+
   return supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/login`,
+    redirectTo: redirectUrl,
   });
+};
+
+export const adminSetUserPassword = async (email, newPassword) => {
+  return supabase.rpc('admin_set_user_password', {
+    target_email: email,
+    new_password: newPassword
+  });
+};
+
+export const updateUserPassword = async (newPassword) => {
+  return supabase.auth.updateUser({ password: newPassword });
 };
 
 export const onAuthStateChange = (callback) => {

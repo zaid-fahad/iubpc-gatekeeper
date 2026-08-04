@@ -84,7 +84,7 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
           element={
             <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
               <AppLayout userRole={userRole}>
-                <GateControl />
+                <GateControl userRole={userRole} />
               </AppLayout>
             </ProtectedRoute>
           } 
@@ -94,7 +94,7 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
           element={
             <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
               <AppLayout userRole={userRole}>
-                <GuestListPortal />
+                <GuestListPortal userRole={userRole} />
               </AppLayout>
             </ProtectedRoute>
           } 

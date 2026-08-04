@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchAllUsers, addUser, updateUser, removeUser, fetchUnassignedUsers, resetPassword } from '../api/auth';
+import { fetchAllUsers, addUser, updateUser, removeUser, fetchUnassignedUsers, resetPassword, adminSetUserPassword } from '../api/auth';
 import { 
   Users, UserPlus, Search, Filter, Shield, Key, RefreshCw, Plus, 
-  UserCheck, ChevronUp, Settings, X, Lock, Trash2, ArrowUpDown, ArrowUp, ArrowDown
+  UserCheck, ChevronUp, Settings, X, Lock, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Check
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 
@@ -29,6 +29,27 @@ const OperatorManifest = () => {
 
   // Selected staff member for Actions Modal
   const [selectedStaff, setSelectedStaff] = useState(null);
+  const [directPassword, setDirectPassword] = useState('');
+  const [showDirectPasswordInput, setShowDirectPasswordInput] = useState(false);
+
+  const handleAdminDirectPasswordReset = async (e) => {
+    e.preventDefault();
+    if (!selectedStaff || !directPassword) return;
+    if (directPassword.length < 6) {
+      showToast("Password must be at least 6 characters long.", 'error');
+      return;
+    }
+    setProcessingId(selectedStaff.email);
+    const { error } = await adminSetUserPassword(selectedStaff.email, directPassword);
+    if (!error) {
+      showToast(`Successfully set new password for ${selectedStaff.email}.`);
+      setDirectPassword('');
+      setShowDirectPasswordInput(false);
+    } else {
+      showToast("Direct password reset failed: " + error.message, 'error');
+    }
+    setProcessingId(null);
+  };
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -588,17 +609,60 @@ const OperatorManifest = () => {
                 </button>
               </div>
 
-              {/* PASSWORD RESET */}
-              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-2">
+              {/* PASSWORD RESET OPTIONS */}
+              <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl space-y-3">
                 <span className="font-medium text-slate-200 block">Password Credentials</span>
-                <button
-                  onClick={() => handleResetPassword(selectedStaff.email)}
-                  disabled={processingId === selectedStaff.email}
-                  className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-all"
-                >
-                  <Key size={13} />
-                  Send Password Reset Link
-                </button>
+                
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleResetPassword(selectedStaff.email)}
+                    disabled={processingId === selectedStaff.email}
+                    className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Key size={13} />
+                    Send Password Reset Link (Email)
+                  </button>
+
+                  {!showDirectPasswordInput ? (
+                    <button
+                      onClick={() => setShowDirectPasswordInput(true)}
+                      className="w-full py-2.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 hover:bg-blue-600/20 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                    >
+                      <Lock size={13} />
+                      Set New Password Directly
+                    </button>
+                  ) : (
+                    <form onSubmit={handleAdminDirectPasswordReset} className="space-y-2 pt-2 border-t border-slate-800">
+                      <label className="text-[11px] text-slate-400 font-semibold block">Set New Password for {selectedStaff.email}:</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={directPassword}
+                          onChange={(e) => setDirectPassword(e.target.value)}
+                          placeholder="Min 6 characters..."
+                          required
+                          minLength={6}
+                          className="flex-1 bg-slate-900 border border-slate-800 p-2 rounded-lg text-xs text-white outline-none focus:border-blue-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={processingId === selectedStaff.email}
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1"
+                        >
+                          {processingId === selectedStaff.email ? <RefreshCw size={13} className="animate-spin" /> : <Check size={13} />}
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowDirectPasswordInput(false); setDirectPassword(''); }}
+                          className="px-2.5 py-2 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-lg text-xs font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
               </div>
 
               {/* REMOVE STAFF */}

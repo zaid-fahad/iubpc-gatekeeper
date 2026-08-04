@@ -11,3 +11,11 @@ export const createEvent = async (eventData) => {
 export const fetchEventById = async (id) => {
   return supabase.from('events').select('*').eq('id', id).single();
 };
+
+export const updateEvent = async (id, updates) => {
+  return supabase.from('events').update(updates).eq('id', id);
+};
+
+export const deleteEvent = async (id) => {
+  return supabase.from('events').delete().eq('id', id);
+};

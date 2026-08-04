@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchEvents as fetchEventsApi, createEvent } from '../api/events';
+import { fetchEvents as fetchEventsApi, createEvent, updateEvent, deleteEvent } from '../api/events';
 import { 
   Plus, Calendar, BarChart3, Users, Search, Filter, 
   LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye,
-  ChevronLeft, ChevronRight, Clock
+  ChevronLeft, ChevronRight, Clock, Pencil, Trash2, ShieldCheck, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 
@@ -311,11 +311,13 @@ const CustomTimePicker = ({ value, onChange }) => {
 const EventRegistry = ({ userRole }) => {
   const [events, setEvents] = useState([]);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
   const [newEvent, setNewEvent] = useState({ 
     title: '', 
     date: new Date().toISOString().split('T')[0], 
     time: '10:00',
-    is_active: true 
+    is_active: true,
+    allow_on_spot: true
   });
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
@@ -363,9 +365,40 @@ const EventRegistry = ({ userRole }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const openCreateModal = () => {
+    setEditingEventId(null);
+    setNewEvent({
+      title: '',
+      date: new Date().toISOString().split('T')[0],
+      time: '10:00',
+      is_active: true,
+      allow_on_spot: true
+    });
+    setShowEventModal(true);
+  };
 
+  const openEditModal = (eventObj) => {
+    setEditingEventId(eventObj.id);
+    let dateStr = new Date().toISOString().split('T')[0];
+    let timeStr = '10:00';
 
-  const handleCreateEvent = async (e) => {
+    if (eventObj.date) {
+      const parts = eventObj.date.split(' ');
+      if (parts[0]) dateStr = parts[0];
+      if (parts[1]) timeStr = parts[1];
+    }
+
+    setNewEvent({
+      title: eventObj.title || '',
+      date: dateStr,
+      time: timeStr,
+      is_active: eventObj.is_active ?? true,
+      allow_on_spot: eventObj.allow_on_spot ?? true
+    });
+    setShowEventModal(true);
+  };
+
+  const handleSaveEvent = async (e) => {
     e.preventDefault();
     if (!newEvent.title.trim()) {
       showToast("Please enter an event title.", 'error');
@@ -378,24 +411,49 @@ const EventRegistry = ({ userRole }) => {
       ? `${newEvent.date} ${newEvent.time}` 
       : newEvent.date;
 
-    const { error } = await createEvent({
+    const payload = {
       title: newEvent.title.trim(),
       date: formattedDate,
-      is_active: newEvent.is_active
-    });
+      is_active: newEvent.is_active,
+      allow_on_spot: newEvent.allow_on_spot
+    };
 
-    if (!error) { 
+    let result;
+    if (editingEventId) {
+      result = await updateEvent(editingEventId, payload);
+    } else {
+      result = await createEvent(payload);
+    }
+
+    if (!result.error) { 
       setShowEventModal(false); 
+      setEditingEventId(null);
       setNewEvent({ 
         title: '', 
         date: new Date().toISOString().split('T')[0], 
         time: '10:00',
-        is_active: true 
+        is_active: true,
+        allow_on_spot: true
       }); 
       await fetchEvents();
-      showToast("Event created successfully.");
+      showToast(editingEventId ? "Event updated successfully." : "Event created successfully.");
     } else {
-      showToast("Creation failed: " + error.message, 'error');
+      showToast("Action failed: " + result.error.message, 'error');
+    }
+    setProcessing(false);
+  };
+
+  const handleDeleteEvent = async (eventObj) => {
+    if (!window.confirm(`Are you sure you want to delete "${eventObj.title}"? This cannot be undone.`)) {
+      return;
+    }
+    setProcessing(true);
+    const { error } = await deleteEvent(eventObj.id);
+    if (!error) {
+      await fetchEvents();
+      showToast("Event deleted successfully.");
+    } else {
+      showToast("Delete failed: " + error.message, 'error');
     }
     setProcessing(false);
   };
@@ -456,7 +514,7 @@ const EventRegistry = ({ userRole }) => {
 
           {isAdmin && (
             <button 
-              onClick={() => setShowEventModal(true)} 
+              onClick={openCreateModal} 
               className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium flex items-center justify-center gap-2 transition-all shadow-md min-h-[44px]"
             >
               <Plus size={15}/>
@@ -583,13 +641,22 @@ const EventRegistry = ({ userRole }) => {
                     <span>Attendees</span>
                   </button>
                   {isAdmin && (
-                    <button 
-                      onClick={() => navigate(`/event/${ev.id}/analytics`)} 
-                      className="flex-1 py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center justify-center gap-1.5 min-h-[44px]"
-                    >
-                      <BarChart3 size={13} />
-                      <span>Analytics</span>
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => openEditModal(ev)} 
+                        className="py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-lg text-xs font-medium transition-all flex items-center justify-center min-h-[44px]"
+                        title="Edit Event"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteEvent(ev)} 
+                        className="py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-lg text-xs font-medium transition-all flex items-center justify-center min-h-[44px]"
+                        title="Delete Event"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -641,12 +708,22 @@ const EventRegistry = ({ userRole }) => {
                         Attendees
                       </button>
                       {isAdmin && (
-                        <button
-                          onClick={() => navigate(`/event/${ev.id}/analytics`)}
-                          className="px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-lg text-xs transition-all min-h-[36px]"
-                        >
-                          Analytics
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openEditModal(ev)}
+                            className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-lg text-xs transition-all min-h-[36px]"
+                            title="Edit Event"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(ev)}
+                            className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-lg text-xs transition-all min-h-[36px]"
+                            title="Delete Event"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>
@@ -668,19 +745,19 @@ const EventRegistry = ({ userRole }) => {
         </div>
       )}
 
-      {/* UPGRADED CREATE EVENT MODAL WITH DESKTOP TYPOGRAPHY, SINGLE DATEPICKER & TIME FIELD */}
+      {/* CREATE / EDIT EVENT MODAL */}
       {showEventModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <form onSubmit={handleCreateEvent} className="relative bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-lg space-y-6 shadow-2xl text-left flex flex-col max-h-[92vh] overflow-y-auto">
+          <form onSubmit={handleSaveEvent} className="relative bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-lg space-y-6 shadow-2xl text-left flex flex-col max-h-[92vh] overflow-y-auto">
             
             {/* MODAL HEADER */}
             <div className="flex justify-between items-center border-b border-slate-800 pb-4">
               <div>
                 <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2.5 tracking-tight">
                   <Calendar size={22} className="text-blue-500" />
-                  Create New Event
+                  {editingEventId ? 'Edit Event Details' : 'Create New Event'}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1">Configure event title, schedule date, start time, and gate status.</p>
+                <p className="text-xs sm:text-sm text-slate-400 mt-1">Configure event title, schedule date, start time, and kiosk settings.</p>
               </div>
               <button 
                 type="button"
@@ -692,7 +769,7 @@ const EventRegistry = ({ userRole }) => {
               </button>
             </div>
 
-            {/* FORM INPUTS WITH ENHANCED DESKTOP TYPOGRAPHY */}
+            {/* FORM INPUTS */}
             <div className="space-y-5 text-xs sm:text-sm">
               
               {/* EVENT NAME */}
@@ -757,6 +834,29 @@ const EventRegistry = ({ userRole }) => {
                 </button>
               </div>
 
+              {/* KIOSK ON-SPOT REGISTRATION TOGGLE */}
+              <div className="flex items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+                <div className="space-y-0.5">
+                  <span className="text-xs sm:text-sm text-slate-200 font-bold block flex items-center gap-1.5">
+                    <Users size={14} className="text-purple-400" />
+                    Kiosk On-Spot Registration
+                  </span>
+                  <span className={`text-[11px] sm:text-xs font-semibold ${newEvent.allow_on_spot ? 'text-purple-400' : 'text-slate-400'}`}>
+                    {newEvent.allow_on_spot ? 'Enabled — Guests can register on kiosk' : 'Disabled — Only pre-registered list permitted'}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setNewEvent(prev => ({ ...prev, allow_on_spot: !prev.allow_on_spot }))}
+                  className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${newEvent.allow_on_spot ? 'bg-purple-600' : 'bg-slate-800'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${newEvent.allow_on_spot ? 'translate-x-7' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+
               {/* LIVE EVENT CARD PREVIEW */}
               <div className="pt-3 border-t border-slate-800 space-y-2">
                 <div className="flex items-center gap-2 text-slate-400 text-xs sm:text-sm">
@@ -797,7 +897,7 @@ const EventRegistry = ({ userRole }) => {
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 min-h-[44px]"
               >
                 {processing ? <RefreshCw size={15} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                <span>Publish Event</span>
+                <span>{editingEventId ? 'Save Changes' : 'Publish Event'}</span>
               </button>
             </div>
           </form>

@@ -4,7 +4,7 @@ import { fetchEvents as fetchEventsApi, createEvent, updateEvent, deleteEvent } 
 import { 
   Plus, Calendar, BarChart3, Users, Search, Filter, 
   LayoutGrid, List, X, RefreshCw, CheckCircle2, ArrowRight, Tag, Eye,
-  ChevronLeft, ChevronRight, Clock, Pencil, Trash2, ShieldCheck, ToggleLeft, ToggleRight
+  ChevronLeft, ChevronRight, Clock, Pencil, Trash2, ShieldCheck, ToggleLeft, ToggleRight, Award
 } from 'lucide-react';
 import { StatCard, CompactDatePicker, CustomTimePicker } from '../components';
 

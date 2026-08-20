@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2 } from 'lucide-react';
+import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2, Award, Sparkles, FileArchive } from 'lucide-react';
 import Papa from 'papaparse';
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, insertAttendee, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
-import { LoadingSpinner } from '../components';
+import { LoadingSpinner, CertificateGeneratorModal } from '../components';
 
 const GuestListPortal = ({ userRole }) => {
   const { id: eventId } = useParams();
@@ -13,9 +13,26 @@ const GuestListPortal = ({ userRole }) => {
   const [event, setEvent] = useState(null);
   const [attendees, setAttendees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showAdd, setShowAdd] = useState(false);
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ name: '', email: '', sid: '', img: '', phone: '', ref: '' });
+
+  const toggleSelectAll = (filteredList) => {
+    if (selectedIds.length === filteredList.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredList.map(a => a.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
 
   const [editingAttendee, setEditingAttendee] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', sid: '', phone: '', ref: '' });
@@ -75,20 +92,22 @@ const GuestListPortal = ({ userRole }) => {
   useEffect(() => {
     let isMounted = true;
     const loadData = async () => {
-      const { data: eventData, error: eError } = await fetchEventById(eventId);
-      if (!isMounted) return;
-      if (eError || !eventData) {
-        navigate('/');
-        return;
+      try {
+        const { data: eventData } = await fetchEventById(eventId);
+        if (!isMounted) return;
+        setEvent(eventData || { id: eventId, title: 'Event Attendee Portal' });
+        await fetchAttendees();
+      } catch (err) {
+        if (!isMounted) return;
+        setEvent({ id: eventId, title: 'Event Attendee Portal' });
+        await fetchAttendees();
       }
-      setEvent(eventData);
-      await fetchAttendees();
     };
     loadData();
     return () => {
       isMounted = false;
     };
-  }, [eventId, navigate, fetchAttendees]);
+  }, [eventId, fetchAttendees]);
 
   const handleManualAdd = async (e) => {
     e.preventDefault();
@@ -153,13 +172,23 @@ const GuestListPortal = ({ userRole }) => {
     }
   };
 
-  const filtered = attendees.filter(a => 
-    a.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    a.student_id?.includes(searchTerm) ||
-    a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.phone?.includes(searchTerm)
-  );
+  const filtered = attendees.filter(a => {
+    const matchesSearch = 
+      a.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      a.student_id?.includes(searchTerm) ||
+      a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.phone?.includes(searchTerm);
+
+    if (!matchesSearch) return false;
+
+    if (statusFilter === 'checked_in') return a.checked_in_1 || a.checked_in_2;
+    if (statusFilter === 'pending') return !a.checked_in_1 && !a.checked_in_2;
+    if (statusFilter === 'token') return a.token_given;
+    if (statusFilter === 'gift') return a.checked_in_2;
+
+    return true;
+  });
 
   if (!event && loading) return <LoadingSpinner />;
 
@@ -178,7 +207,24 @@ const GuestListPortal = ({ userRole }) => {
             <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Attendee Database</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && (
+            <button 
+              onClick={() => navigate(`/events/${eventId}/certificate-designer`)} 
+              className="px-4 py-2.5 bg-slate-900 text-purple-400 hover:text-purple-300 rounded-xl border border-purple-500/30 hover:border-purple-500/60 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"
+              title="Design Certificate Template"
+            >
+              <Award size={16}/> Design Certificate
+            </button>
+          )}
+
+          <button 
+            onClick={() => setShowCertModal(true)} 
+            className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl active:scale-95 shadow-lg shadow-purple-600/20 transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"
+          >
+            <FileArchive size={16}/> Generate Certificates {selectedIds.length > 0 ? `(${selectedIds.length} Selected)` : ''}
+          </button>
+
           <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Add Attendee</button>
           <label className="px-4 py-2.5 bg-green-500 text-slate-950 rounded-xl cursor-pointer hover:bg-green-400 transition-all active:scale-95 flex items-center justify-center border-b-4 border-green-700 shadow-xl font-black text-[9px] uppercase tracking-widest gap-2 italic">
             <Upload size={16} /> Import CSV <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
@@ -188,14 +234,29 @@ const GuestListPortal = ({ userRole }) => {
 
       <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl space-y-4 italic shadow-xl">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center italic">
-          <div className="relative w-full md:max-w-xs group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-green-500 transition-colors" size={16} />
-            <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-800" placeholder="Search attendees..." />
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-green-500 transition-colors" size={16} />
+              <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-950 border border-slate-800 p-3 pl-9 rounded-xl text-xs font-bold text-white shadow-inner outline-none italic placeholder:text-slate-700" placeholder="Search attendees..." />
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-slate-950 border border-slate-800 p-3 rounded-xl text-xs font-bold text-slate-300 outline-none cursor-pointer"
+            >
+              <option value="all">Filter: All Attendees ({attendees.length})</option>
+              <option value="checked_in">Filter: Checked-In Only</option>
+              <option value="pending">Filter: Pending Only</option>
+              <option value="token">Filter: Token Issued</option>
+              <option value="gift">Filter: Gift Collected</option>
+            </select>
           </div>
+
           <div className="flex items-center gap-4 italic">
             <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-200 hover:text-green-400 uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={20}/> Get Template</button>
             <div className="h-3 w-px bg-slate-800"></div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic leading-none">{attendees.length} Attendees Listed</span>
+            <span className="text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] italic leading-none">{filtered.length} Displayed</span>
           </div>
         </div>
       </div>
@@ -209,8 +270,14 @@ const GuestListPortal = ({ userRole }) => {
             <div className="lg:hidden grid grid-cols-1 gap-3 max-w-2xl mx-auto pb-40">
               {filtered.map(row => (
                 <div key={row.id} className="bg-slate-900 border border-slate-800 p-6 rounded-[2.8rem] flex items-center justify-between group hover:border-slate-700 transition-all shadow-xl relative overflow-hidden italic">
-                  <div className="flex items-center gap-5 relative z-10">
-                    <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-16 h-16 rounded-3xl border-2 border-slate-950 object-cover bg-slate-800 shadow-md" />
+                  <div className="flex items-center gap-4 relative z-10">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIds.includes(row.id)} 
+                      onChange={() => toggleSelect(row.id)} 
+                      className="w-5 h-5 accent-purple-500 rounded cursor-pointer shrink-0" 
+                    />
+                    <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-14 h-14 rounded-3xl border-2 border-slate-950 object-cover bg-slate-800 shadow-md shrink-0" />
                     <div>
                         <p className="text-base font-black text-white italic leading-none truncate max-w-[150px] uppercase tracking-tighter">{row.full_name}</p>
                         <p className="text-[10px] font-bold text-slate-600 uppercase mt-2 tracking-tight italic">ID: {row.student_id}</p>
@@ -233,6 +300,14 @@ const GuestListPortal = ({ userRole }) => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-950/50 border-b border-slate-800">
+                      <th className="p-6 w-12 text-center">
+                        <input 
+                          type="checkbox" 
+                          checked={filtered.length > 0 && selectedIds.length === filtered.length} 
+                          onChange={() => toggleSelectAll(filtered)} 
+                          className="w-4 h-4 accent-purple-500 rounded cursor-pointer" 
+                        />
+                      </th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Attendee</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
                       <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
@@ -244,6 +319,14 @@ const GuestListPortal = ({ userRole }) => {
                   <tbody className="divide-y divide-slate-800/50">
                     {filtered.map(row => (
                       <tr key={row.id} className="hover:bg-slate-800/30 transition-colors group">
+                        <td className="p-6 w-12 text-center">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(row.id)} 
+                            onChange={() => toggleSelect(row.id)} 
+                            className="w-4 h-4 accent-purple-500 rounded cursor-pointer" 
+                          />
+                        </td>
                         <td className="p-6">
                           <div className="flex items-center gap-4">
                             <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-950 object-cover bg-slate-800" />
@@ -272,6 +355,16 @@ const GuestListPortal = ({ userRole }) => {
                         {isAdmin && (
                           <td className="p-6 text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedIds([row.id]);
+                                  setShowCertModal(true);
+                                }}
+                                className="p-2 bg-slate-950 border border-slate-800 hover:border-purple-500/50 text-purple-400 hover:text-purple-300 rounded-xl transition-all"
+                                title="Export Single Certificate PDF"
+                              >
+                                <Award size={15} />
+                              </button>
                               <button
                                 onClick={() => openEditModal(row)}
                                 className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-xl transition-all"
@@ -358,6 +451,16 @@ const GuestListPortal = ({ userRole }) => {
             </form>
         </div>
       )}
+
+      {/* CERTIFICATE BATCH GENERATOR MODAL */}
+      <CertificateGeneratorModal
+        isOpen={showCertModal}
+        onClose={() => setShowCertModal(false)}
+        eventId={eventId}
+        eventTitle={event?.title || 'Event'}
+        attendees={attendees}
+        selectedIds={selectedIds}
+      />
     </div>
   );
 };

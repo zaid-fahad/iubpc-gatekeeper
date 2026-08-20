@@ -9,3 +9,6 @@ export const GateControl = lazy(() => import('./GateControl'));
 export const GuestListPortal = lazy(() => import('./GuestListPortal'));
 export const EventAnalytics = lazy(() => import('./EventAnalytics'));
 export const SelfEntryKiosk = lazy(() => import('./SelfEntryKiosk'));
+export const CertificateDesigner = lazy(() => import('./CertificateDesigner'));
+export const PublicCertificateVerification = lazy(() => import('./PublicCertificateVerification'));
+export const CertificatesModule = lazy(() => import('./CertificatesModule'));

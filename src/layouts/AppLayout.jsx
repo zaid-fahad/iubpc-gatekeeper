@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { signOut } from '../api/auth';
 import { 
-  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X
+  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X, Award
 } from 'lucide-react';
 
 const AppLayout = ({ children, userRole }) => {
@@ -19,7 +19,8 @@ const AppLayout = ({ children, userRole }) => {
   const navItems = [
     ...(isAdmin ? [
       { to: '/', icon: <LayoutDashboard size={20}/>, label: 'Overview' },
-      { to: '/operators', icon: <Users size={20}/>, label: 'Staff' }
+      { to: '/operators', icon: <Users size={20}/>, label: 'Staff' },
+      { to: '/certificates', icon: <Award size={20}/>, label: 'Certificates' }
     ] : []),
     { to: '/events', icon: <Calendar size={20}/>, label: 'Events' },
   ];

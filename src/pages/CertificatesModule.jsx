@@ -4,7 +4,7 @@ import { fetchEvents, fetchTemplateByEvent, fetchEventAttendees } from '../api';
 import { StatCard, LoadingSpinner, CertificateGeneratorModal } from '../components';
 import { 
   Award, Sparkles, Calendar, Search, ArrowRight, ShieldCheck, 
-  Layers, Users, LayoutGrid, List, ChevronRight, FileArchive 
+  Layers, Users, LayoutGrid, List, ChevronRight, FileArchive, CheckCircle2, Clock
 } from 'lucide-react';
 
 const CertificatesModule = ({ userRole }) => {
@@ -21,7 +21,7 @@ const CertificatesModule = ({ userRole }) => {
   const [activeCertModalEvent, setActiveCertModalEvent] = useState(null);
   const [activeCertModalAttendees, setActiveCertModalAttendees] = useState([]);
 
-  // Fetch all events and their certificate template status
+  // Fetch all events and parallelize template & attendee status queries for instant load
   const loadCertificatesData = useCallback(async () => {
     try {
       setLoading(true);
@@ -29,23 +29,37 @@ const CertificatesModule = ({ userRole }) => {
       if (!eventsList) return;
 
       setEvents(eventsList);
+      setLoading(false); // Unblock UI immediately for instant rendering
 
-      // Fetch template & attendee count per event
+      // Execute all event template & attendee count queries concurrently in parallel
+      const eventPromises = eventsList.map(async (ev) => {
+        try {
+          const [{ data: tmpl }, { data: attendees }] = await Promise.all([
+            fetchTemplateByEvent(ev.id),
+            fetchEventAttendees(ev.id)
+          ]);
+
+          return {
+            id: ev.id,
+            data: {
+              hasTemplate: !!tmpl,
+              template: tmpl,
+              attendees: attendees || [],
+              attendeeCount: attendees?.length || 0,
+              checkedInCount: attendees?.filter(a => a.checked_in_1 || a.checked_in_2).length || 0
+            }
+          };
+        } catch {
+          return {
+            id: ev.id,
+            data: { hasTemplate: false, template: null, attendees: [], attendeeCount: 0, checkedInCount: 0 }
+          };
+        }
+      });
+
+      const results = await Promise.all(eventPromises);
       const map = {};
-      for (const ev of eventsList) {
-        const [{ data: tmpl }, { data: attendees }] = await Promise.all([
-          fetchTemplateByEvent(ev.id),
-          fetchEventAttendees(ev.id)
-        ]);
-
-        map[ev.id] = {
-          hasTemplate: !!tmpl,
-          template: tmpl,
-          attendees: attendees || [],
-          attendeeCount: attendees?.length || 0,
-          checkedInCount: attendees?.filter(a => a.checked_in_1 || a.checked_in_2).length || 0
-        };
-      }
+      results.forEach(r => { map[r.id] = r.data; });
       setEventDataMap(map);
     } catch (err) {
       console.error('Failed to load certificates module:', err);
@@ -58,19 +72,11 @@ const CertificatesModule = ({ userRole }) => {
     loadCertificatesData();
   }, [loadCertificatesData]);
 
-  // Open Batch Certificate Generator for an event
-  const openGeneratorModal = (ev, e) => {
-    if (e) e.stopPropagation();
-    const data = eventDataMap[ev.id];
-    setActiveCertModalEvent(ev);
-    setActiveCertModalAttendees(data?.attendees || []);
-  };
-
   // Direct Verification Redirect
   const handleVerifySearch = (e) => {
     e.preventDefault();
     if (!verifySearchTerm.trim()) return;
-    navigate(`/certificate/${verifySearchTerm.trim().toUpperCase()}`);
+    navigate(`/verify/${verifySearchTerm.trim().toUpperCase()}`);
   };
 
   const filteredEvents = events.filter(ev => 
@@ -80,10 +86,10 @@ const CertificatesModule = ({ userRole }) => {
   const totalTemplates = Object.values(eventDataMap).filter(d => d.hasTemplate).length;
   const totalCheckedIn = Object.values(eventDataMap).reduce((acc, curr) => acc + curr.checkedInCount, 0);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading && events.length === 0) return <LoadingSpinner />;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 font-sans italic">
+    <div className="space-y-8 animate-in fade-in duration-500 font-sans italic max-w-full overflow-hidden">
       {/* MODULE HEADER */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 border-b border-slate-800 pb-6">
         <div>
@@ -140,7 +146,7 @@ const CertificatesModule = ({ userRole }) => {
       </div>
 
       {/* EVENT CERTIFICATES MANAGEMENT LIST */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl">
+      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-4 sm:p-6 space-y-6 shadow-xl max-w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-800/80 pb-4">
           <div>
             <h2 className="text-lg font-bold text-white uppercase italic tracking-tight">
@@ -211,7 +217,7 @@ const CertificatesModule = ({ userRole }) => {
                       <ChevronRight size={18} className="text-slate-600 group-hover:text-purple-400 transition-colors" />
                     </h3>
                     <p className="text-xs text-slate-400">
-                      {data.attendeeCount} Registered • <span className="text-purple-400 font-bold">{data.checkedInCount} Checked-In</span>
+                      {data.attendeeCount || 0} Registered • <span className="text-purple-400 font-bold">{data.checkedInCount || 0} Checked-In</span>
                     </p>
                   </div>
 
@@ -222,7 +228,7 @@ const CertificatesModule = ({ userRole }) => {
                           e.stopPropagation();
                           navigate(`/events/${ev.id}/certificate-designer`);
                         }}
-                        className="flex-1 py-2.5 px-3 bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px]"
+                        className="py-2.5 px-3 bg-purple-600/10 hover:bg-purple-600/20 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px] whitespace-nowrap"
                       >
                         <Award size={15} />
                         <span>{hasTemplate ? 'Edit Template' : 'Design Layout'}</span>
@@ -230,11 +236,14 @@ const CertificatesModule = ({ userRole }) => {
                     )}
 
                     <button
-                      onClick={(e) => openGeneratorModal(ev, e)}
-                      className="flex-1 py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-white rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 min-h-[40px]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/events/${ev.id}/guests`);
+                      }}
+                      className="flex-1 py-2.5 px-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 min-h-[40px] whitespace-nowrap"
                     >
-                      <FileArchive size={15} className="text-purple-400" />
-                      <span>Export Certs</span>
+                      <FileArchive size={15} />
+                      <span>Manage & Export Certs</span>
                     </button>
                   </div>
                 </div>
@@ -242,19 +251,19 @@ const CertificatesModule = ({ userRole }) => {
             })}
           </div>
         ) : (
-          /* TABLE LIST VIEW */
-          <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/60">
-            <table className="w-full text-left border-collapse">
+          /* PERFECTLY FITTING COMPACT TABLE LIST VIEW */
+          <div className="w-full max-w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80 shadow-2xl">
+            <table className="w-full text-left border-collapse table-auto">
               <thead>
-                <tr className="bg-slate-950 border-b border-slate-800 text-xs font-medium text-slate-400">
-                  <th className="p-4">Event Name</th>
-                  <th className="p-4">Date</th>
-                  <th className="p-4">Template Status</th>
-                  <th className="p-4">Attendees</th>
-                  <th className="p-4 text-right">Actions</th>
+                <tr className="bg-slate-950 border-b border-slate-800 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                  <th className="py-3.5 px-4 font-bold">Event Details</th>
+                  <th className="py-3.5 px-4 font-bold">Date</th>
+                  <th className="py-3.5 px-4 font-bold">Template Status</th>
+                  <th className="py-3.5 px-4 font-bold">Attendees</th>
+                  <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80 text-xs font-medium">
+              <tbody className="divide-y divide-slate-800/80 text-xs">
                 {filteredEvents.map((ev) => {
                   const data = eventDataMap[ev.id] || {};
                   const hasTemplate = data.hasTemplate;
@@ -263,43 +272,62 @@ const CertificatesModule = ({ userRole }) => {
                     <tr 
                       key={ev.id} 
                       onClick={() => navigate(`/events/${ev.id}/guests`)}
-                      className="hover:bg-slate-800/40 transition-colors cursor-pointer group"
+                      className="hover:bg-slate-900/90 transition-all cursor-pointer group"
                     >
-                      <td className="p-4 font-bold text-white group-hover:text-purple-300 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <Users size={16} className="text-purple-400" />
-                          <span>{ev.title}</span>
+                      {/* Event Details */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400 shrink-0">
+                            <Award size={16} />
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-white block group-hover:text-purple-300 transition-colors tracking-tight truncate">
+                              {ev.title}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 block">
+                              ID: {ev.id.substring(0, 8)}
+                            </span>
+                          </div>
                         </div>
                       </td>
-                      <td className="p-4 text-slate-300 font-mono">{ev.date}</td>
-                      <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${hasTemplate ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
-                          {hasTemplate ? 'Ready' : 'No Template'}
+
+                      {/* Event Date */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-xs font-mono text-slate-300">
+                          <Calendar size={13} className="text-purple-400 shrink-0" />
+                          <span>{ev.date}</span>
+                        </div>
+                      </td>
+
+                      {/* Template Status Badge */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${hasTemplate ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${hasTemplate ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                          {hasTemplate ? 'Ready' : 'Needs Template'}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-300">
-                        {data.attendeeCount} Registered (<span className="text-purple-400 font-bold">{data.checkedInCount} Checked-In</span>)
-                      </td>
-                      <td className="p-4 text-right" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/events/${ev.id}/guests`);
-                            }}
-                            className="px-3 py-1.5 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs transition-all flex items-center gap-1 min-h-[36px]"
-                          >
-                            <Users size={13} />
-                            <span>Attendees</span>
-                          </button>
 
+                      {/* Participation Metrics */}
+                      <td className="py-3.5 px-4 text-xs text-slate-300 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-slate-100">{data.attendeeCount || 0}</span>
+                          <span className="text-slate-500">Reg</span>
+                          <span className="text-slate-700">•</span>
+                          <span className="font-bold text-purple-400">{data.checkedInCount || 0}</span>
+                          <span className="text-slate-400">Checked-In</span>
+                        </div>
+                      </td>
+
+                      {/* Action Buttons */}
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
                           {isAdmin && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/events/${ev.id}/certificate-designer`);
                               }}
-                              className="px-3 py-1.5 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/30 text-purple-300 rounded-xl text-xs transition-all flex items-center gap-1 min-h-[36px]"
+                              className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 hover:border-purple-500/40 text-purple-300 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"
                               title="Design Certificate Template"
                             >
                               <Award size={13} />
@@ -308,11 +336,14 @@ const CertificatesModule = ({ userRole }) => {
                           )}
 
                           <button
-                            onClick={(e) => openGeneratorModal(ev, e)}
-                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 min-h-[36px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/events/${ev.id}/guests`);
+                            }}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-all shadow-md shadow-purple-600/20 flex items-center gap-1"
                           >
                             <FileArchive size={13} />
-                            <span>Export</span>
+                            <span>Manage & Export</span>
                           </button>
                         </div>
                       </td>

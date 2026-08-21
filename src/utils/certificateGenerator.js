@@ -9,7 +9,7 @@ import QRCode from 'qrcode';
  * Generate dynamic QR Code DataURL for public verification URL
  */
 export const generateVerificationQRCode = async (certNumber) => {
-  const verificationUrl = `${window.location.origin}/certificate/${certNumber}`;
+  const verificationUrl = `${window.location.origin}/verify/${certNumber}`;
   try {
     return await QRCode.toDataURL(verificationUrl, {
       width: 250,

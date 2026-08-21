@@ -71,7 +71,7 @@ const CertificateGeneratorModal = ({ isOpen, onClose, eventId, eventTitle, atten
         ]
       };
 
-      const certRecord = await getOrCreateCertificate(eventId, attendee.id, activeTemplate.id || null);
+      const certRecord = await getOrCreateCertificate(eventId, attendee.id, activeTemplate.id || null, attendee);
       const certNum = certRecord?.certificate_number || 'CERT-2026-SINGLE';
 
       const pdfDoc = await generateCertificatePDF({
@@ -123,7 +123,7 @@ const CertificateGeneratorModal = ({ isOpen, onClose, eventId, eventTitle, atten
       };
 
       const attendeeIds = targetAttendees.map(a => a.id);
-      const certRecords = await bulkGetOrCreateCertificates(eventId, attendeeIds, activeTemplate.id || null);
+      const certRecords = await bulkGetOrCreateCertificates(eventId, attendeeIds, activeTemplate.id || null, targetAttendees);
 
       const zip = new JSZip();
       const folderName = `${eventTitle.replace(/[^a-zA-Z0-9]/g, '_')}_Certificates`;

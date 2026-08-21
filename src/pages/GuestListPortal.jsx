@@ -197,7 +197,7 @@ const GuestListPortal = ({ userRole }) => {
       <header className="flex justify-between items-end italic">
         <div className="flex items-center gap-4 italic">
           <button 
-            onClick={() => navigate('/events')}
+            onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/events')}
             className="p-2.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-all active:scale-95 italic shadow-lg"
           >
             <ChevronLeft size={20}/>

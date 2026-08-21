@@ -33,6 +33,14 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
           />
 
           <Route 
+            path="/verify" 
+            element={<PublicCertificateVerification />} 
+          />
+          <Route 
+            path="/verify/:certificateNumber" 
+            element={<PublicCertificateVerification />} 
+          />
+          <Route 
             path="/certificate/:certificateNumber" 
             element={<PublicCertificateVerification />} 
           />

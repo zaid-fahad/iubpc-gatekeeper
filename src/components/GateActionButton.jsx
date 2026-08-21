@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
-const GateActBtn = ({ label, active, onClick, icon, color }) => (
+const GateActionButton = ({ label, active, onClick, icon, color }) => (
   <button 
     onClick={onClick} 
     className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-300 active:scale-[0.97] ${active ? 'border-transparent shadow-xl' : 'bg-slate-950/40 border-slate-800/80 text-slate-500'}`} 
@@ -17,4 +17,4 @@ const GateActBtn = ({ label, active, onClick, icon, color }) => (
   </button>
 );
 
-export default GateActBtn;
+export default GateActionButton;

@@ -238,7 +238,7 @@ const SelfEntryKiosk = () => {
       {/* KIOSK TOP CONTROL BAR */}
       <header className="flex items-center justify-between border-b border-slate-800 pb-4">
         <button 
-          onClick={() => navigate(`/event/${eventId}/gate`)}
+          onClick={() => navigate(`/events/${eventId}/gate`)}
           className="px-3.5 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all min-h-[44px]"
           title="Exit Kiosk Mode"
         >

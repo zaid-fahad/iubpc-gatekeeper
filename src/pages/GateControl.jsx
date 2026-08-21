@@ -8,9 +8,7 @@ import {
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee, updateAttendee, deleteAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
-import GateActBtn from '../components/GateActBtn';
-import LoadingSpinner from '../components/LoadingSpinner';
-import StatCard from '../components/StatCard';
+import { GateActionButton, LoadingSpinner, StatCard } from '../components';
 import { supabase } from '../lib/supabase';
 
 const GateControl = ({ userRole }) => {
@@ -386,7 +384,7 @@ const GateControl = ({ userRole }) => {
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => navigate(`/event/${eventId}/kiosk`)}
+            onClick={() => navigate(`/events/${eventId}/kiosk`)}
             className="px-3.5 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all min-h-[44px]"
           >
             <IdCard size={15} className="text-purple-400" />
@@ -700,7 +698,7 @@ const GateControl = ({ userRole }) => {
                   
                   <div className="space-y-3">
                     {/* GATE 1 ENTRY CHECKBOX */}
-                    <GateActBtn
+                    <GateActionButton
                       label="Gate Entry Check-In"
                       active={!!member.checked_in_1}
                       onClick={() => updateStatus('checked_in_1', !member.checked_in_1)}
@@ -709,7 +707,7 @@ const GateControl = ({ userRole }) => {
                     />
 
                     {/* MEAL / FOOD TOKEN CHECKBOX */}
-                    <GateActBtn
+                    <GateActionButton
                       label="Meal / Food Token"
                       active={!!member.token_given}
                       onClick={() => updateStatus('token_given', !member.token_given)}
@@ -718,7 +716,7 @@ const GateControl = ({ userRole }) => {
                     />
 
                     {/* GIFT / SWAG KIT CHECKBOX */}
-                    <GateActBtn
+                    <GateActionButton
                       label="Gift / Swag Kit"
                       active={!!member.checked_in_2}
                       onClick={() => updateStatus('checked_in_2', !member.checked_in_2)}

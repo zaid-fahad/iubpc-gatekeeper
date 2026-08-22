@@ -66,36 +66,11 @@ const EventRegistry = ({ userRole }) => {
   }, []);
 
   const openCreateModal = () => {
-    setEditingEventId(null);
-    setNewEvent({
-      title: '',
-      date: new Date().toISOString().split('T')[0],
-      time: '10:00',
-      is_active: true,
-      allow_on_spot: true
-    });
-    setShowEventModal(true);
+    navigate('/events/new');
   };
 
   const openEditModal = (eventObj) => {
-    setEditingEventId(eventObj.id);
-    let dateStr = new Date().toISOString().split('T')[0];
-    let timeStr = '10:00';
-
-    if (eventObj.date) {
-      const parts = eventObj.date.split(' ');
-      if (parts[0]) dateStr = parts[0];
-      if (parts[1]) timeStr = parts[1];
-    }
-
-    setNewEvent({
-      title: eventObj.title || '',
-      date: dateStr,
-      time: timeStr,
-      is_active: eventObj.is_active ?? true,
-      allow_on_spot: eventObj.allow_on_spot ?? true
-    });
-    setShowEventModal(true);
+    navigate(`/events/${eventObj.id}/edit`);
   };
 
   const handleSaveEvent = async (e) => {

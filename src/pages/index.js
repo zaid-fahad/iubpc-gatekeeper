@@ -12,3 +12,5 @@ export const SelfEntryKiosk = lazy(() => import('./SelfEntryKiosk'));
 export const CertificateDesigner = lazy(() => import('./CertificateDesigner'));
 export const PublicCertificateVerification = lazy(() => import('./PublicCertificateVerification'));
 export const CertificatesModule = lazy(() => import('./CertificatesModule'));
+export const CreateEditEventPage = lazy(() => import('./CreateEditEventPage'));
+export const PublicEventRegistrationPage = lazy(() => import('./PublicEventRegistrationPage'));

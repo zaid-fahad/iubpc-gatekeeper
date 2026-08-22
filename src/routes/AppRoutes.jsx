@@ -6,7 +6,7 @@ import {
   AuthScreen, DashboardOverview, EventRegistry, OperatorManifest, 
   GateControl, GuestListPortal, EventAnalytics, SelfEntryKiosk,
   CertificateDesigner, PublicCertificateVerification, CertificatesModule,
-  CreateEditEventPage, PublicEventRegistrationPage
+  CreateEditEventPage, PublicEventRegistrationPage, PortalSettingsPage
 } from '../pages';
 
 const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
@@ -77,6 +77,16 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
               element={
                 <ProtectedRoute user={user} isAdmin={isAdmin && isActive} loading={loading}>
                   <OperatorManifest />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Portal Settings Route */}
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute user={user} isAdmin={isAuthorized} loading={loading}>
+                  <PortalSettingsPage userRole={userRole} />
                 </ProtectedRoute>
               } 
             />

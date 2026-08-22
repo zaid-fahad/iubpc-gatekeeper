@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { signOut } from '../api/auth';
 import { 
-  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X, Award
+  LogOut, LayoutDashboard, Calendar, Users, Zap, ChevronLeft, Menu, X, Award, Settings
 } from 'lucide-react';
 import { Footer } from '../components';
+import { getPortalSettings, applyPortalSettings } from '../utils/portalSettings';
 
 const AppLayout = ({ children, userRole }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [portalConfig, setPortalConfig] = useState(getPortalSettings());
   const isAdmin = userRole === 'admin';
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Apply portal theme settings on layout mount
+    applyPortalSettings(portalConfig);
+
+    const handleSettingsUpdate = () => {
+      const updated = getPortalSettings();
+      setPortalConfig(updated);
+      applyPortalSettings(updated);
+    };
+
+    window.addEventListener('portal_settings_changed', handleSettingsUpdate);
+    return () => window.removeEventListener('portal_settings_changed', handleSettingsUpdate);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -24,12 +40,13 @@ const AppLayout = ({ children, userRole }) => {
       { to: '/certificates', icon: <Award size={20}/>, label: 'Certificates' }
     ] : []),
     { to: '/events', icon: <Calendar size={20}/>, label: 'Events' },
+    { to: '/settings', icon: <Settings size={20}/>, label: 'Settings' }
   ];
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row font-sans">
       {/* MOBILE HEADER */}
       <header className="md:hidden flex items-center justify-between p-4 bg-slate-900/50 border-b border-slate-800/50 backdrop-blur-xl sticky top-0 z-[100]">
         <div className="flex items-center gap-3">
@@ -37,9 +54,9 @@ const AppLayout = ({ children, userRole }) => {
                 <Menu size={20}/>
             </button>
             <div className="w-8 h-8 flex items-center justify-center">
-                <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
+                <img src={portalConfig.logoUrl || '/transparent_logo.webp'} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.target.src = '/transparent_logo.webp'; }} />
             </div>
-            <h1 className="text-base font-black tracking-tighter text-white uppercase italic">IUBPC</h1>
+            <h1 className="text-base font-black tracking-tighter text-white uppercase italic">{portalConfig.portalTitle || 'IUBPC'}</h1>
         </div>
         <button onClick={handleSignOut} className="p-2 bg-slate-800 rounded-lg text-red-500 active:scale-90 transition-all">
             <LogOut size={16}/>
@@ -102,11 +119,11 @@ const AppLayout = ({ children, userRole }) => {
       <aside className={`hidden md:flex ${isCollapsed ? 'md:w-20' : 'md:w-64'} md:h-screen md:sticky md:top-0 bg-slate-900/50 border-r border-slate-800/50 backdrop-blur-xl z-[100] flex-col transition-all duration-500 ease-in-out self-start`}>
         <div className={`p-6 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} relative`}>
           <div className="w-10 h-10 flex items-center justify-center shrink-0">
-            <img src="/transparent_logo.webp" alt="Logo" className="w-full h-full object-contain" />
+            <img src={portalConfig.logoUrl || '/transparent_logo.webp'} alt="Logo" className="w-full h-full object-contain" onError={(e) => { e.target.src = '/transparent_logo.webp'; }} />
           </div>
           {!isCollapsed && (
             <div className="animate-in fade-in slide-in-from-left-2 duration-300 overflow-hidden">
-              <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">IUBPC</h1>
+              <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none italic whitespace-nowrap">{portalConfig.portalTitle || 'IUBPC'}</h1>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1.5 leading-none whitespace-nowrap">
                 {isAdmin ? 'ADMIN' : 'STAFF'}
               </p>

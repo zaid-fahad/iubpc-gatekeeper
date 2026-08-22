@@ -365,7 +365,7 @@ const GuestListPortal = ({ userRole }) => {
 
       {/* VIEW ATTENDEE PROFILE MODAL WITH PASS & CERTIFICATE EXPORT BUTTONS */}
       {viewingAttendee && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/70 backdrop-blur-md animate-in zoom-in duration-300">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-lg space-y-6 shadow-2xl text-left">
             <div className="flex justify-between items-center pb-4 border-b border-slate-800">
               <div className="flex items-center gap-3">

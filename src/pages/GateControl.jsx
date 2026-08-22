@@ -550,9 +550,9 @@ const GateControl = ({ userRole }) => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Total Registered" value={stats.total} color="bg-slate-950/60" char="R" />
+              <StatCard label="Total Registered" value={stats.total} color="bg-blue-500/10 border-blue-500/20" char="R" />
               <StatCard label="Checked In" value={stats.checkedIn} color="bg-green-500/10 border-green-500/20" char="C" />
-              <StatCard label="Remaining" value={stats.remaining} color="bg-slate-950/60" char="P" />
+              <StatCard label="Remaining" value={stats.remaining} color="bg-amber-500/10 border-amber-500/20" char="P" />
               <StatCard label="On-Spot Reg" value={stats.onSpot} color="bg-purple-500/10 border-purple-500/20" char="S" />
             </div>
 
@@ -607,7 +607,7 @@ const GateControl = ({ userRole }) => {
           <div className="w-full max-w-5xl mx-auto bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
             
             {/* DRAWER TOP BAR WITH CLOSE BUTTON & ADMIN ACTIONS */}
-            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950/50">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
                 <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Attendee Check-In Management</h3>
@@ -616,16 +616,18 @@ const GateControl = ({ userRole }) => {
                 {isAdmin && (
                   <>
                     <button
+                      type="button"
                       onClick={openEditAttendeeModal}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors flex items-center gap-1.5 text-xs font-semibold"
                       title="Edit Attendee Info"
                     >
                       <Pencil size={15} />
                       <span className="hidden sm:inline">Edit</span>
                     </button>
                     <button
+                      type="button"
                       onClick={handleDeleteAttendee}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-600/20 text-slate-300 hover:text-red-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-colors flex items-center gap-1.5 text-xs font-semibold"
                       title="Delete Attendee"
                     >
                       <Trash2 size={15} />
@@ -634,6 +636,7 @@ const GateControl = ({ userRole }) => {
                   </>
                 )}
                 <button 
+                  type="button"
                   onClick={() => setMember(null)}
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                   title="Close Drawer"
@@ -730,12 +733,14 @@ const GateControl = ({ userRole }) => {
             </div>
 
             {/* STICKY FOOTER */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950/80 shrink-0">
+            <div className="p-4 border-t border-slate-800 bg-slate-900 shrink-0">
               <button
+                type="button"
                 onClick={() => setMember(null)}
-                className="w-full py-3 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
+                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all min-h-[44px] shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2"
               >
-                Done & Close Drawer
+                <CheckCircle2 size={16} />
+                <span>Done & Close Drawer</span>
               </button>
             </div>
 

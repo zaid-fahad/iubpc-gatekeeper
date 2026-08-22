@@ -14,3 +14,4 @@ export const PublicCertificateVerification = lazy(() => import('./PublicCertific
 export const CertificatesModule = lazy(() => import('./CertificatesModule'));
 export const CreateEditEventPage = lazy(() => import('./CreateEditEventPage'));
 export const PublicEventRegistrationPage = lazy(() => import('./PublicEventRegistrationPage'));
+export const PortalSettingsPage = lazy(() => import('./PortalSettingsPage'));

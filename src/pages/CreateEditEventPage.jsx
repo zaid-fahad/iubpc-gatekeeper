@@ -7,43 +7,26 @@ import {
   ArrowLeft, Check, Copy, ExternalLink, RefreshCw, Upload, Download, 
   Share2, ChevronUp, ChevronDown, CheckCircle2, AlertCircle, HelpCircle, Eye, ChevronRight, Lock, X, Layers
 } from 'lucide-react';
-import { CompactDatePicker, CustomTimePicker, LoadingSpinner, CsvFieldMapperModal } from '../components';
+import { CompactDatePicker, CustomTimePicker, LoadingSpinner, CsvFieldMapperModal, FormSchemaBuilder } from '../components';
+import { useEventForm } from '../hooks/useEventForm';
 
 const CreateEditEventPage = () => {
   const { id } = useParams();
-  const isEditing = Boolean(id);
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(isEditing);
-  const [saving, setSaving] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-
-  // Event Data State
-  const [eventData, setEventData] = useState({
-    title: '',
-    date: new Date().toISOString().split('T')[0],
-    time: '10:00',
-    is_active: true,
-    allow_on_spot: true,
-    registration_type: 'custom_form', // 'custom_form' | 'google_form' | 'csv_upload' | 'none'
-    google_form_url: '',
-    google_sheet_csv_url: '',
-    form_schema: [
-      { id: 'f1', name: 'full_name', label: 'Full Name', type: 'text', required: true, options: [] },
-      { id: 'f2', name: 'student_id', label: 'Student ID / Roll', type: 'text', required: true, options: [] },
-      { id: 'f3', name: 'email', label: 'Email Address', type: 'email', required: false, options: [] },
-      { id: 'f4', name: 'phone', label: 'Phone Number', type: 'tel', required: false, options: [] },
-      { id: 'f5', name: 'reference', label: 'Reference Person / Host', type: 'text', required: true, options: [] }
-    ],
-    theme_config: {
-      primary_color: '#9333ea',
-      secondary_color: '#4f46e5',
-      accent_color: '#10b981',
-      banner_url: '',
-      bg_url: '',
-      bg_color: '#090d16'
-    }
-  });
+  const {
+    isEditing,
+    loading,
+    saving,
+    eventData,
+    formError,
+    copiedLink,
+    setCopiedLink,
+    updateEventData,
+    updateThemeConfig,
+    updateFormSchema,
+    saveEvent
+  } = useEventForm(id, navigate);
 
   // How-To Collapsible Visibility State
   const [showHowToForm, setShowHowToForm] = useState(false);
@@ -243,42 +226,9 @@ const CreateEditEventPage = () => {
 
   // Save Event Action
   const handleSave = async () => {
-    if (!eventData.title.trim()) {
-      alert('Event Title is required.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      const payload = {
-        title: eventData.title.trim(),
-        date: `${eventData.date} ${eventData.time}:00`,
-        is_active: eventData.is_active,
-        allow_on_spot: eventData.allow_on_spot,
-        registration_type: eventData.registration_type,
-        google_form_url: eventData.google_form_url.trim(),
-        google_sheet_csv_url: eventData.google_sheet_csv_url.trim(),
-        form_schema: eventData.form_schema,
-        theme_config: eventData.theme_config
-      };
-
-      if (isEditing) {
-        const { error } = await updateEvent(id, payload);
-        if (error) throw error;
-      } else {
-        const { data, error } = await createEvent(payload);
-        if (error) throw error;
-        if (data && data[0]) {
-          navigate(`/events/${data[0].id}/edit`);
-        }
-      }
-
+    const success = await saveEvent();
+    if (success) {
       alert(`Event ${isEditing ? 'updated' : 'created'} successfully!`);
-    } catch (err) {
-      console.error('Failed to save event:', err);
-      alert(`Save failed: ${err.message || 'Error saving event'}`);
-    } finally {
-      setSaving(false);
     }
   };
 

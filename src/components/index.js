@@ -9,3 +9,4 @@ export { default as PassGeneratorModal } from './PassGeneratorModal';
 export { default as AddAttendeeModal } from './AddAttendeeModal';
 export { default as CsvFieldMapperModal } from './CsvFieldMapperModal';
 export { default as Footer } from './Footer';
+export { FormSchemaBuilder } from './FormSchemaBuilder';

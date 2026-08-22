@@ -1,245 +1,113 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import QRCode from 'qrcode';
-import { fetchEventById } from '../api/events';
-import { insertAttendee } from '../api/attendees';
-import { LoadingSpinner, Footer } from '../components';
-import { generateConfirmationPDF } from '../utils/confirmationPdfGenerator';
-import { getPortalSettings } from '../utils/portalSettings';
+import React, { useState } from 'react';
+import { useParams } from 'react';
 import { 
-  CheckCircle2, UserPlus, FileText, Sparkles, UserCheck, ShieldCheck, 
-  AlertCircle, Upload, Trash2, Calendar, Clock, MapPin, ArrowRight, Check,
-  Mail, Phone, User, Hash, FileCheck, Layers, Info, Award, HelpCircle, Heart, Code2, Globe
+  Calendar, Clock, MapPin, CheckCircle2, UserCheck, ShieldCheck, 
+  Upload, FileText, Check, AlertCircle, Info, HelpCircle, ArrowLeft, Image as ImageIcon
 } from 'lucide-react';
+import { usePublicRegistration } from '../hooks/usePublicRegistration';
+import { usePortalTheme } from '../context/PortalThemeContext';
+import { generateConfirmationPDF } from '../utils/confirmationPdfGenerator';
+import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from '../components/Footer';
 
-const PublicEventRegistrationPage = () => {
+export default function PublicEventRegistrationPage() {
   const { eventId } = useParams();
-  const [eventObj, setEventObj] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [submittedAttendee, setSubmittedAttendee] = useState(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const { settings, isLightMode } = usePortalTheme();
+  const theme = settings;
+
+  const {
+    loading,
+    submitting,
+    eventObj,
+    formError,
+    participantType,
+    setParticipantType,
+    formData,
+    handleInputChange,
+    answers,
+    handleAnswerChange,
+    photoPreview,
+    handlePhotoUpload,
+    submittedAttendee,
+    qrCodeUrl,
+    submitRegistration
+  } = usePublicRegistration(eventId);
+
   const [bannerError, setBannerError] = useState(false);
-  
-  const [participantType, setParticipantType] = useState('student'); // 'student' | 'guest'
-  const [formData, setFormData] = useState({
-    full_name: '',
-    student_id: '',
-    email: '',
-    phone: '',
-    reference: '',
-    avatar_url: ''
-  });
-  const [avatarPreview, setAvatarPreview] = useState('');
-  const [customResponses, setCustomResponses] = useState({});
-  const [formError, setFormError] = useState('');
 
-  useEffect(() => {
-    const loadEvent = async () => {
-      setLoading(true);
-      try {
-        const { data } = await fetchEventById(eventId);
-        if (data) {
-          setEventObj(data);
-        }
-      } catch (err) {
-        console.error('Failed to load public registration event:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadEvent();
-  }, [eventId]);
-
-  const handleInputChange = (fieldKey, value) => {
-    setFormData({ ...formData, [fieldKey]: value });
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setFormError('Profile photo size must be less than 5MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result);
-        setFormData(prev => ({ ...prev, avatar_url: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setAvatarPreview('');
-    setFormData(prev => ({ ...prev, avatar_url: '' }));
-  };
-
-  const handleCheckboxChange = (fieldKey, optionText, isChecked) => {
-    setCustomResponses(prev => {
-      const currentList = Array.isArray(prev[fieldKey]) ? prev[fieldKey] : [];
-      const updatedList = isChecked 
-        ? [...currentList, optionText] 
-        : currentList.filter(item => item !== optionText);
-      return { ...prev, [fieldKey]: updatedList };
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-
-    if (!formData.full_name.trim()) {
-      setFormError('Full Name is required.');
-      return;
-    }
-
-    if (participantType === 'student' && !formData.student_id.trim()) {
-      setFormError('Student ID / Roll No is required for Students/Members.');
-      return;
-    }
-
-    if (participantType === 'guest' && !formData.reference.trim()) {
-      setFormError('Reference Person / Host contact is required for Guests.');
-      return;
-    }
-
-    let finalStudentId = formData.student_id.trim();
-    if (!finalStudentId && participantType === 'guest') {
-      finalStudentId = `GUEST-${Math.floor(1000 + Math.random() * 9000)}`;
-    }
-
-    try {
-      setSubmitting(true);
-      const attendeePayload = {
-        event_id: eventId,
-        full_name: formData.full_name.trim(),
-        student_id: finalStudentId,
-        email: formData.email.trim() || null,
-        phone: formData.phone.trim() || null,
-        reference: formData.reference.trim() || null,
-        avatar_url: formData.avatar_url.trim() || null,
-        category: participantType === 'guest' ? 'Guest Visitor' : 'Participant',
-        custom_responses: Object.keys(customResponses).length > 0 ? customResponses : null
-      };
-
-      const { data: newAttendee, error } = await insertAttendee(attendeePayload);
-      if (error) throw error;
-
-      const registered = newAttendee || {
-        ...attendeePayload,
-        id: `att_${Date.now()}`
-      };
-
-      setSubmittedAttendee(registered);
-
-      // Generate QR Code
-      const qrData = `${window.location.origin}/verify/${registered.student_id}`;
-      const dataUrl = await QRCode.toDataURL(qrData, { width: 250, margin: 1 });
-      setQrCodeUrl(dataUrl);
-
-    } catch (err) {
-      console.error('Registration failed:', err);
-      setFormError(`Registration failed: ${err.message || 'Error creating record'}`);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return <LoadingSpinner fullScreen message="Loading event details..." />;
+  }
 
   if (!eventObj) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center mb-4">
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-white space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
           <AlertCircle size={32} />
         </div>
-        <h2 className="text-xl font-bold text-white">Event Registration Unavailable</h2>
-        <p className="text-xs text-slate-400 mt-1 max-w-sm">The event ID provided could not be found or public registration is currently closed.</p>
+        <h1 className="text-2xl font-bold">Event Not Found</h1>
+        <p className="text-sm text-slate-400 max-w-sm">The event registration link may be invalid or expired.</p>
+        <a href="/" className="px-6 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white transition-all">
+          Return Home
+        </a>
       </div>
     );
   }
 
-  const settings = getPortalSettings();
-  const isLightMode = settings.themeMode === 'light' || (typeof document !== 'undefined' && document.documentElement.classList.contains('light-mode'));
-
-  const theme = eventObj.theme_config || {
-    primary_color: '#9333ea',
-    secondary_color: '#4f46e5',
-    accent_color: '#10b981',
-    banner_url: '',
-    bg_url: '',
-    bg_color: isLightMode ? '#f8fafc' : '#090d16'
-  };
-
-  const schema = eventObj.form_schema || [];
-
   return (
-    <div 
-      className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden flex flex-col justify-between selection:bg-purple-500 selection:text-white"
-      style={{ backgroundColor: isLightMode ? '#f8fafc' : (theme.bg_color || '#090d16'), backgroundImage: theme.bg_url ? `url(${theme.bg_url})` : 'none' }}
-    >
-      {/* AMBIENT BACKGROUND GLOWS (DARK MODE ONLY) */}
-      {!isLightMode && (
-        <>
-          <div 
-            className="fixed top-0 left-1/4 -translate-x-1/2 w-[600px] h-[350px] rounded-full blur-[160px] opacity-25 pointer-events-none"
-            style={{ backgroundColor: theme.primary_color }}
-          />
-          <div 
-            className="fixed bottom-0 right-1/4 translate-x-1/2 w-[500px] h-[300px] rounded-full blur-[140px] opacity-20 pointer-events-none"
-            style={{ backgroundColor: theme.secondary_color || theme.primary_color }}
-          />
-        </>
-      )}
+    <div className={`min-h-screen ${isLightMode ? 'bg-slate-100 text-slate-900' : 'bg-slate-950 text-slate-100'} flex flex-col font-sans selection:bg-purple-500 selection:text-white transition-colors duration-200`}>
 
-      {/* TOP EVENT WEBPAGE NAVIGATION BAR */}
-      <header className={`sticky top-0 z-50 w-full ${isLightMode ? 'bg-[#f8fafc]/95 border-slate-200' : 'bg-slate-950/90 border-slate-800/80'} backdrop-blur-xl border-b px-4 sm:px-8 py-3.5`}>
+      {/* TOP HEADER */}
+      <header className={`border-b ${isLightMode ? 'bg-white/90 border-slate-200 shadow-2xs' : 'bg-slate-950/80 border-slate-800/80 backdrop-blur-md'} sticky top-0 z-40 px-4 sm:px-8 py-3.5`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border p-2 flex items-center justify-center shadow-sm`}>
-              <img src="/transparent_logo.webp" alt="IUBPC Logo" className="w-full h-full object-contain" />
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-purple-500/30 bg-slate-900 flex items-center justify-center shadow-xs">
+              <img 
+                src={theme.logo_url || '/transparent_logo.webp'} 
+                alt="Logo" 
+                className="w-full h-full object-cover" 
+                onError={(e) => { e.target.src = '/transparent_logo.webp'; }}
+              />
             </div>
             <div>
-              <h1 className={`text-sm font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight flex items-center gap-2`}>
-                <span>Independent University, Bangladesh</span>
-              </h1>
-              <p className={`text-[11px] ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Department of Computer Science & Engineering</p>
+              <span className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight block leading-none`}>
+                {theme.portalTitle || 'IUBPC Gatekeeper'}
+              </span>
+              <span className={`text-[10px] ${isLightMode ? 'text-slate-500' : 'text-slate-400'} font-medium block mt-0.5`}>
+                {theme.orgName || 'Independent University, Bangladesh'}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className={`hidden md:flex items-center gap-2 text-xs ${isLightMode ? 'text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-slate-900 border-slate-800'} font-medium border px-3.5 py-1.5 rounded-full shadow-sm`}>
-              <Award size={14} className="text-amber-400" />
-              <span>Official Event Registration</span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Open</span>
             </span>
           </div>
         </div>
       </header>
 
-      {/* MODERN INTEGRATED HERO CONTAINER */}
-      <div className="max-w-6xl mx-auto w-full px-4 sm:px-8 mt-6 sm:mt-8 text-left">
-        <div className={`relative rounded-3xl overflow-hidden border ${isLightMode ? 'border-slate-200/80 bg-white shadow-lg' : 'border-slate-800/80 bg-slate-900 shadow-2xl'}`}>
+      {/* INTEGRATED HERO TILE */}
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-8 pt-4 sm:pt-6">
+        <div className={`rounded-3xl border ${isLightMode ? 'bg-white border-slate-200/80 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'} overflow-hidden`}>
           
           {/* BANNER GRAPHIC */}
-          <div className="w-full h-48 sm:h-64 md:h-80 relative overflow-hidden">
-            {theme.banner_url && !bannerError ? (
+          <div className="relative h-48 sm:h-64 md:h-80 w-full overflow-hidden bg-slate-950">
+            {eventObj.banner_url && !bannerError ? (
               <img 
-                src={theme.banner_url} 
+                src={eventObj.banner_url} 
                 alt={eventObj.title} 
-                className="w-full h-full object-cover" 
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                 onError={() => setBannerError(true)}
               />
             ) : (
-              <div 
-                className="w-full h-full relative"
-                style={{ background: isLightMode ? 'linear-gradient(135deg, rgba(147, 51, 234, 0.12), rgba(79, 70, 229, 0.08))' : `linear-gradient(135deg, ${theme.primary_color}35, ${theme.secondary_color || theme.primary_color}15)` }}
-              >
-                <div className={`absolute inset-0 ${isLightMode ? 'bg-[radial-gradient(#9333ea_1px,transparent_1px)] opacity-10' : 'bg-[radial-gradient(#ffffff_1px,transparent_1px)] opacity-10'} [background-size:24px_24px]`} />
+              <div className="w-full h-full bg-gradient-to-br from-purple-900/40 via-slate-950 to-emerald-900/30 flex flex-col items-center justify-center p-6 text-center">
+                <ImageIcon size={48} className="text-purple-400/40 mb-2" />
+                <span className="text-xs font-mono text-purple-300/60 uppercase tracking-widest">{eventObj.title}</span>
               </div>
             )}
-            <div className={`absolute inset-0 ${isLightMode ? 'bg-gradient-to-t from-white via-white/50 to-transparent' : 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-t ${isLightMode ? 'from-white via-white/40 to-transparent' : 'from-slate-950 via-slate-950/50 to-transparent'}`}></div>
           </div>
 
           {/* HERO TEXT & METRICS */}
@@ -278,44 +146,44 @@ const PublicEventRegistrationPage = () => {
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-8 py-4 sm:py-6 flex-1">
         {submittedAttendee ? (
           /* REGISTRATION SUCCESS PAGE CARD */
-          <div className="max-w-2xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-8 shadow-2xl backdrop-blur-xl">
+          <div className={`max-w-2xl mx-auto ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/90 border-slate-800 backdrop-blur-xl shadow-2xl'} border rounded-3xl p-8 sm:p-12 text-center space-y-8`}>
             <div 
               className="w-20 h-20 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl"
-              style={{ backgroundColor: theme.accent_color || '#10b981' }}
+              style={{ backgroundColor: theme.accentColor || '#10b981' }}
             >
               <CheckCircle2 size={44} />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-white">Registration Confirmed!</h2>
-              <p className="text-sm text-slate-400 max-w-md mx-auto">
-                You are registered for <strong className="text-white">{eventObj.title}</strong>. Your official entry pass is ready.
+              <h2 className={`text-3xl font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Registration Confirmed!</h2>
+              <p className={`text-sm ${isLightMode ? 'text-slate-600' : 'text-slate-400'} max-w-md mx-auto`}>
+                You are registered for <strong className={isLightMode ? 'text-slate-900' : 'text-white'}>{eventObj.title}</strong>. Your official entry pass is ready.
               </p>
             </div>
 
             {/* PASS PREVIEW BADGE */}
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-4 max-w-md mx-auto text-left shadow-inner">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className={`${isLightMode ? 'bg-slate-50 border-slate-200' : 'bg-slate-950 border-slate-800'} border rounded-2xl p-6 space-y-4 max-w-md mx-auto text-left shadow-inner`}>
+              <div className={`flex items-center justify-between border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800'} pb-4`}>
                 <div>
                   <span className="text-[11px] font-medium text-slate-500 uppercase block">Participant</span>
-                  <p className="text-xl font-bold text-white mt-0.5">{submittedAttendee.full_name}</p>
-                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <p className={`text-xl font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} mt-0.5`}>{submittedAttendee.full_name}</p>
+                  <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-600 border border-purple-500/20">
                     {submittedAttendee.category}
                   </span>
                 </div>
                 {qrCodeUrl && (
-                  <img src={qrCodeUrl} alt="QR Code" className="w-20 h-20 rounded-xl border border-slate-800 bg-white p-1 shadow-md" />
+                  <img src={qrCodeUrl} alt="QR Code" className="w-20 h-20 rounded-xl border border-slate-200 bg-white p-1 shadow-md" />
                 )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <span className="text-[11px] text-slate-500 uppercase block">Registration Code</span>
-                  <span className="text-slate-200 font-bold font-mono mt-0.5 block">{submittedAttendee.student_id}</span>
+                  <span className={`${isLightMode ? 'text-slate-900' : 'text-slate-200'} font-bold font-mono mt-0.5 block`}>{submittedAttendee.student_id}</span>
                 </div>
                 <div>
                   <span className="text-[11px] text-slate-500 uppercase block">Host / Reference</span>
-                  <span className="text-emerald-400 font-bold mt-0.5 block">{submittedAttendee.reference || 'Verified'}</span>
+                  <span className="text-emerald-600 font-bold mt-0.5 block">{submittedAttendee.reference || 'Verified'}</span>
                 </div>
               </div>
             </div>
@@ -324,7 +192,7 @@ const PublicEventRegistrationPage = () => {
               <button
                 onClick={() => generateConfirmationPDF(submittedAttendee, eventObj.title)}
                 className="w-full py-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-xl transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2"
-                style={{ backgroundColor: theme.primary_color }}
+                style={{ backgroundColor: theme.primaryColor || '#9333ea' }}
               >
                 <FileText size={18} />
                 <span>Download Entry Pass (PDF)</span>
@@ -337,7 +205,7 @@ const PublicEventRegistrationPage = () => {
             
             {/* LEFT COLUMN: REGISTRATION FORM (ORDER 2 ON MOBILE, ORDER 1 ON DESKTOP) */}
             <div className="order-2 lg:order-1 lg:col-span-8 space-y-8">
-              <form onSubmit={handleSubmit} className="space-y-8">
+              <form onSubmit={submitRegistration} className="space-y-8">
                 
                 {formError && (
                   <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl text-xs text-red-400 flex items-center gap-3">
@@ -347,14 +215,14 @@ const PublicEventRegistrationPage = () => {
                 )}
 
                 {/* STEP 1: PARTICIPANT TYPE */}
-                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 sm:p-8 space-y-4 backdrop-blur-md">
-                  <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold">
+                <div className={`p-6 sm:p-8 space-y-4 rounded-2xl border ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'}`}>
+                  <div className={`flex items-center gap-3 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800/80'} pb-4`}>
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 flex items-center justify-center text-xs font-bold">
                       1
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">Registration Category</h3>
-                      <p className="text-xs text-slate-400">Select your registration role for this event</p>
+                      <h3 className={`text-base font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Registration Category</h3>
+                      <p className={`text-xs ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Select your registration role for this event</p>
                     </div>
                   </div>
 
@@ -400,223 +268,190 @@ const PublicEventRegistrationPage = () => {
                 </div>
 
                 {/* STEP 2: PERSONAL INFORMATION */}
-                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 sm:p-8 space-y-5 backdrop-blur-md">
-                  <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">
+                <div className={`p-6 sm:p-8 space-y-5 rounded-2xl border ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'}`}>
+                  <div className={`flex items-center gap-3 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800/80'} pb-4`}>
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 flex items-center justify-center text-xs font-bold">
                       2
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white">Personal Information</h3>
-                      <p className="text-xs text-slate-400">Fill in your identity details for event pass verification</p>
+                      <h3 className={`text-base font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Personal & Identification Details</h3>
+                      <p className={`text-xs ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Information will be printed on your digital entry pass</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
-                    <div className="sm:col-span-2">
-                      <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                        Full Name <span className="text-red-400">*</span>
-                      </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Full Name *</label>
                       <input
                         type="text"
-                        value={formData.full_name}
-                        onChange={(e) => handleInputChange('full_name', e.target.value)}
-                        placeholder="e.g. Tanvir Ahmed"
                         required
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white outline-none transition-all"
+                        placeholder="e.g. Tanvir Ahmed"
+                        value={formData.fullName}
+                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                        className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
                       />
                     </div>
 
-                    <div>
-                      <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                        {participantType === 'student' ? 'Student ID / Roll No *' : 'Student ID (Optional)'}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.student_id}
-                        onChange={(e) => handleInputChange('student_id', e.target.value)}
-                        placeholder={participantType === 'guest' ? 'Auto-generated if empty' : 'e.g. 2020101'}
-                        required={participantType === 'student'}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white font-mono outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                        {participantType === 'guest' ? 'Reference Person / Host *' : 'Reference Person / Host (Optional)'}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.reference}
-                        onChange={(e) => handleInputChange('reference', e.target.value)}
-                        placeholder={participantType === 'guest' ? 'e.g. Dr. Rahman (Faculty Host)' : 'Optional Host Name'}
-                        required={participantType === 'guest'}
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                        Email Address (Optional)
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="you@example.com"
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white font-mono outline-none transition-all"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-slate-300 block mb-1.5">
-                        Phone Number (Optional)
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        placeholder="01700000000"
-                        className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white font-mono outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* PROFILE PHOTO UPLOADER */}
-                  <div className="space-y-2 pt-3 border-t border-slate-800/80">
-                    <label className="text-xs font-medium text-slate-300 block">
-                      Profile Photo (Optional)
-                    </label>
-
-                    {avatarPreview ? (
-                      <div className="flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl">
-                        <img src={avatarPreview} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-md" />
-                        <div className="flex-1 truncate">
-                          <span className="text-xs font-semibold text-white block">Photo Selected</span>
-                          <span className="text-[11px] text-emerald-400 font-mono">Will be printed on pass</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="p-2 text-slate-400 hover:text-red-400 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                    {participantType === 'student' ? (
+                      <div className="space-y-1.5">
+                        <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Student / Member ID *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. 2120000"
+                          value={formData.studentId}
+                          onChange={(e) => handleInputChange('studentId', e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                        />
                       </div>
                     ) : (
-                      <label className="flex flex-col items-center justify-center p-5 bg-slate-950 border border-dashed border-slate-800 hover:border-purple-500/50 rounded-xl cursor-pointer transition-all group">
-                        <Upload size={20} className="text-slate-500 group-hover:text-purple-400 transition-colors mb-1" />
-                        <span className="text-xs font-medium text-slate-300">Click to Upload Profile Photo</span>
-                        <span className="text-[11px] text-slate-500 mt-0.5">JPG, PNG or WEBP (Max 5MB)</span>
+                      <div className="space-y-1.5">
+                        <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Host / Faculty Reference</label>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
+                          type="text"
+                          placeholder="e.g. Dr. Subrata Kumar Dey"
+                          value={formData.guestReference}
+                          onChange={(e) => handleInputChange('guestReference', e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
                         />
-                      </label>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Email Address</label>
+                      <input
+                        type="email"
+                        placeholder="e.g. tanvir@iub.edu.bd"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Phone Number</label>
+                      <input
+                        type="tel"
+                        placeholder="e.g. 01700000000"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                      />
+                    </div>
+
+                    {participantType === 'student' ? (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Department</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. CSE"
+                            value={formData.department}
+                            onChange={(e) => handleInputChange('department', e.target.value)}
+                            className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Batch / Year</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Batch 2024"
+                            value={formData.batch}
+                            onChange={(e) => handleInputChange('batch', e.target.value)}
+                            className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Organization / Institution</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. BUET / Tech Corp"
+                          value={formData.guestOrganization}
+                          onChange={(e) => handleInputChange('guestOrganization', e.target.value)}
+                          className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500 transition-colors`}
+                        />
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* STEP 3: DYNAMIC EVENT QUESTIONS */}
-                {schema.length > 0 && (
-                  <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 sm:p-8 space-y-5 backdrop-blur-md">
-                    <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
-                        3
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-white">Event Questionnaire</h3>
-                        <p className="text-xs text-slate-400">Additional questions provided by event organizers</p>
-                      </div>
+                {/* STEP 3: CUSTOM QUESTIONNAIRE & PHOTO */}
+                <div className={`p-6 sm:p-8 space-y-5 rounded-2xl border ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'}`}>
+                  <div className={`flex items-center gap-3 border-b ${isLightMode ? 'border-slate-200' : 'border-slate-800/80'} pb-4`}>
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                      3
                     </div>
-
-                    <div className="space-y-5 pt-2">
-                      {schema.map((field, fieldIdx) => {
-                        const fieldKey = field.id || field.name || field.label || `custom_${fieldIdx}`;
-                        const lowerKey = (field.name || field.label || '').toLowerCase();
-
-                        if (lowerKey.includes('full_name') || lowerKey.includes('student_id') || lowerKey.includes('email') || lowerKey.includes('phone') || lowerKey.includes('reference') || lowerKey.includes('roll')) {
-                          return null;
-                        }
-
-                        return (
-                          <div key={fieldKey} className="space-y-1.5">
-                            <label className="text-xs font-medium text-slate-300 block">
-                              {field.label || field.name} {field.required && <span className="text-red-400">*</span>}
-                            </label>
-
-                            {field.type === 'select' ? (
-                              <select
-                                value={customResponses[fieldKey] || ''}
-                                onChange={(e) => setCustomResponses(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-                                required={field.required}
-                                className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white outline-none"
-                              >
-                                <option value="">Select Option...</option>
-                                {(field.options || []).map(opt => (
-                                  <option key={opt} value={opt}>{opt}</option>
-                                ))}
-                              </select>
-                            ) : field.type === 'radio' ? (
-                              <div className="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                                {(field.options || []).map(opt => (
-                                  <label key={opt} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-900 text-xs text-slate-300 cursor-pointer transition-colors">
-                                    <input
-                                      type="radio"
-                                      name={`public_radio_${fieldKey}`}
-                                      value={opt}
-                                      checked={customResponses[fieldKey] === opt}
-                                      onChange={() => setCustomResponses(prev => ({ ...prev, [fieldKey]: opt }))}
-                                      className="accent-purple-500"
-                                    />
-                                    <span>{opt}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            ) : field.type === 'checkbox' ? (
-                              <div className="space-y-2 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                                {(field.options || []).map(opt => {
-                                  const selectedList = Array.isArray(customResponses[fieldKey]) ? customResponses[fieldKey] : [];
-                                  const isChecked = selectedList.includes(opt);
-                                  return (
-                                    <label key={opt} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-900 text-xs text-slate-300 cursor-pointer transition-colors">
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={(e) => handleCheckboxChange(fieldKey, opt, e.target.checked)}
-                                        className="accent-purple-500 rounded"
-                                      />
-                                      <span>{opt}</span>
-                                    </label>
-                                  );
-                                })}
-                              </div>
-                            ) : field.type === 'textarea' ? (
-                              <textarea
-                                value={customResponses[fieldKey] || ''}
-                                onChange={(e) => setCustomResponses(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-                                placeholder={field.placeholder || ''}
-                                required={field.required}
-                                rows={3}
-                                className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white outline-none resize-none"
-                              />
-                            ) : (
-                              <input
-                                type={field.type || 'text'}
-                                value={customResponses[fieldKey] || ''}
-                                onChange={(e) => setCustomResponses(prev => ({ ...prev, [fieldKey]: e.target.value }))}
-                                placeholder={field.placeholder || ''}
-                                required={field.required}
-                                className="w-full bg-slate-950 border border-slate-800 focus:border-purple-500 rounded-xl p-3.5 text-xs text-white outline-none"
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
+                    <div>
+                      <h3 className={`text-base font-bold ${isLightMode ? 'text-slate-900' : 'text-white'}`}>Additional Questionnaire & Photo</h3>
+                      <p className={`text-xs ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Event specific details and identification photo</p>
                     </div>
                   </div>
-                )}
+
+                  {/* PHOTO UPLOAD SEAM */}
+                  <div className="space-y-2">
+                    <label className={`font-semibold text-xs ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>Participant Photo (Optional)</label>
+                    <div className="flex items-center gap-4">
+                      {photoPreview ? (
+                        <img src={photoPreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover border border-slate-700" />
+                      ) : (
+                        <div className={`w-16 h-16 rounded-xl border border-dashed ${isLightMode ? 'border-slate-300 bg-slate-50 text-slate-400' : 'border-slate-800 bg-slate-950 text-slate-600'} flex items-center justify-center`}>
+                          <Upload size={20} />
+                        </div>
+                      )}
+                      <label className={`px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider cursor-pointer ${isLightMode ? 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50' : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white'}`}>
+                        <span>Upload Photo</span>
+                        <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* DYNAMIC QUESTIONNAIRE SCHEMA */}
+                  {Array.isArray(eventObj.form_schema) && eventObj.form_schema.length > 0 && (
+                    <div className="space-y-4 pt-2 border-t border-slate-800/80">
+                      {eventObj.form_schema.map((q, idx) => (
+                        <div key={idx} className="space-y-1.5 text-xs">
+                          <label className={`font-semibold ${isLightMode ? 'text-slate-800' : 'text-slate-300'}`}>
+                            {q.label} {q.required && '*'}
+                          </label>
+                          {q.type === 'select' ? (
+                            <select
+                              required={q.required}
+                              value={answers[q.label] || ''}
+                              onChange={(e) => handleAnswerChange(q.label, e.target.value)}
+                              className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500`}
+                            >
+                              <option value="">Select an option</option>
+                              {q.options?.map((opt, i) => (
+                                <option key={i} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          ) : q.type === 'textarea' ? (
+                            <textarea
+                              required={q.required}
+                              rows={3}
+                              placeholder="Enter details..."
+                              value={answers[q.label] || ''}
+                              onChange={(e) => handleAnswerChange(q.label, e.target.value)}
+                              className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500`}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              required={q.required}
+                              placeholder="Enter answer..."
+                              value={answers[q.label] || ''}
+                              onChange={(e) => handleAnswerChange(q.label, e.target.value)}
+                              className={`w-full px-4 py-3 rounded-xl border ${isLightMode ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-950 border-slate-800 text-white'} focus:outline-none focus:border-purple-500`}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* SUBMIT BUTTON */}
                 <div className="pt-2">
@@ -624,9 +459,9 @@ const PublicEventRegistrationPage = () => {
                     type="submit"
                     disabled={submitting}
                     className="w-full py-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white shadow-xl transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: theme.primary_color }}
+                    style={{ backgroundColor: theme.primaryColor || '#9333ea' }}
                   >
-                    <UserPlus size={16} />
+                    <CheckCircle2 size={18} />
                     <span>{submitting ? 'Submitting Registration...' : 'Complete Event Registration'}</span>
                   </button>
                 </div>
@@ -687,10 +522,10 @@ const PublicEventRegistrationPage = () => {
               {/* BRANDING MINI CARD */}
               <div className={`p-4 ${isLightMode ? 'bg-gradient-to-r from-purple-500/5 via-emerald-500/5 to-blue-500/5 border-slate-200/80 shadow-xs' : 'bg-slate-950/80 border-slate-800/80 shadow-sm'} border rounded-2xl text-center space-y-1`}>
                 <span className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} flex items-center justify-center gap-1.5`}>
-                  <span>{settings?.portalTitle || 'IUBPC Gatekeeper System'}</span>
+                  <span>{theme.portalTitle || 'IUBPC Gatekeeper System'}</span>
                 </span>
                 <span className={`text-[11px] ${isLightMode ? 'text-slate-600' : 'text-slate-400'} block`}>
-                  {settings?.orgName || 'Department of Computer Science & Engineering'}
+                  {theme.orgName || 'Department of Computer Science & Engineering'}
                 </span>
               </div>
 
@@ -704,6 +539,4 @@ const PublicEventRegistrationPage = () => {
       <Footer />
     </div>
   );
-};
-
-export default PublicEventRegistrationPage;
+}

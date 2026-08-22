@@ -10,6 +10,8 @@ import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLo
 import { getSession } from '../api/auth';
 import { GateActionButton, LoadingSpinner, StatCard, AddAttendeeModal } from '../components';
 import { supabase } from '../lib/supabase';
+import { useGateCheckIn } from '../hooks/useGateCheckIn';
+import { useQrScanner } from '../hooks/useQrScanner';
 
 const GateControl = ({ userRole }) => {
   const { id: eventId } = useParams();
@@ -269,18 +271,12 @@ const GateControl = ({ userRole }) => {
     setAttendeeHistory(data || []);
   };
 
+  const { checkInAttendee } = useGateCheckIn(eventId, adminEmail);
+
   const updateStatus = async (field, val) => {
     if (!member) return;
-    const { error: err } = await updateAttendeeStatus(member.id, field, val);
-    if (!err) {
-      await insertEntryLog({
-        attendee_id: member.id,
-        event_id: eventId,
-        action_type: field,
-        status: val,
-        admin_email: adminEmail
-      });
-
+    const { success } = await checkInAttendee(member.id, field, val);
+    if (success) {
       setAttendees(prev => prev.map(a => a.id === member.id ? { ...a, [field]: val } : a));
       setMember(prev => prev ? { ...prev, [field]: val } : null);
     }

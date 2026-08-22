@@ -4,6 +4,8 @@ import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, insertAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useGateCheckIn } from '../hooks/useGateCheckIn';
+import { useQrScanner } from '../hooks/useQrScanner';
 import { 
   CheckCircle2, XCircle, Calendar, Clock, 
   ArrowLeft, UserCheck, RefreshCw, IdCard, Delete, Keyboard, Smartphone, UserPlus, User, Users

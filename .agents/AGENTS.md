@@ -13,3 +13,17 @@ When performing software development tasks, you MUST strictly follow this 7-step
 7. **Prompt User for `main` Merge**: Ask the user if they want to merge `develop` into `main` and publish a release. If confirmed, merge to `main`, create GitHub release (`gh release create vX.Y.Z`), and optionally archive branch (`archive/vX.Y.Z`).
 
 See full details in [docs/GITHUB_WORKFLOW.md](file:///Users/gm-ict/Documents/iubpc-gatekeeper/docs/GITHUB_WORKFLOW.md).
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues via `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.

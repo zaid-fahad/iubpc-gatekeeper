@@ -11,21 +11,166 @@ body {
   transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
-/* CLEAN PURE WHITE LIGHT MODE DESIGN SYSTEM (TASTEFUL SKILL) */
+/* TASTEFUL SKILL: CLEAN FLAT MODERN LIGHT MODE DESIGN SYSTEM (MINIMAL SHADOWS) */
 html.light-mode {
   color-scheme: light;
-  background-color: var(--bg-primary, #ffffff);
-  background-image: radial-gradient(at 0% 0%, rgba(147, 51, 234, 0.04) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.04) 0px, transparent 50%);
-  color: var(--text-primary, #0f172a);
+  background-color: #f1f5f9 !important;
+  background-image: none !important;
+  color: #0f172a !important;
 }
 
 html.light-mode body {
-  background-color: var(--bg-primary, #ffffff);
-  background-image: radial-gradient(at 0% 0%, rgba(147, 51, 234, 0.04) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.04) 0px, transparent 50%);
-  color: var(--text-primary, #0f172a);
+  background-color: #f1f5f9 !important;
+  background-image: none !important;
+  color: #0f172a !important;
 }
 
-/* Light Mode Modal Backdrop Dimming */
+/* Soft Slate Background for Full-Screen Containers */
+html.light-mode .min-h-screen {
+  background-color: #f1f5f9 !important;
+  background-image: none !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Navigation & Headers */
+html.light-mode header,
+html.light-mode aside {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+/* Light Mode Main Cards, Modals, and Panels (Clean Flat White Cards) */
+html.light-mode .bg-slate-900,
+html.light-mode .bg-slate-900\/90,
+html.light-mode .bg-slate-900\/80,
+html.light-mode .bg-slate-900\/60,
+html.light-mode .bg-slate-900\/50,
+html.light-mode .bg-slate-950,
+html.light-mode .bg-slate-950\/90,
+html.light-mode .bg-slate-950\/85,
+html.light-mode .bg-slate-950\/60 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Remove Heavy TailWind Shadows in Light Mode */
+html.light-mode .shadow-2xl,
+html.light-mode .shadow-xl,
+html.light-mode .shadow-lg,
+html.light-mode .shadow-md {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Sub-containers & Secondary Pill Surfaces */
+html.light-mode .bg-slate-800,
+html.light-mode .bg-slate-800\/80,
+html.light-mode .bg-slate-800\/60,
+html.light-mode .bg-slate-800\/40 {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: none !important;
+}
+
+/* Input Controls & Textareas */
+html.light-mode input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+html.light-mode select,
+html.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+html.light-mode input::placeholder,
+html.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+html.light-mode option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Step Badges in Light Mode */
+html.light-mode .bg-purple-500\/10 {
+  background-color: #f3e8ff !important;
+  border-color: #e9d5ff !important;
+  color: #7e22ce !important;
+}
+
+html.light-mode .bg-blue-500\/10 {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+
+html.light-mode .bg-emerald-500\/10 {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+html.light-mode .bg-purple-600\/15 {
+  background-color: #f3e8ff !important;
+  border-color: #c084fc !important;
+}
+
+html.light-mode .bg-purple-600\/15 span,
+html.light-mode .bg-purple-600\/15 svg,
+html.light-mode .bg-purple-600\/15 div {
+  color: #6b21a8 !important;
+}
+
+html.light-mode .bg-emerald-600\/15 {
+  background-color: #ecfdf5 !important;
+  border-color: #34d399 !important;
+}
+
+html.light-mode .bg-emerald-600\/15 span,
+html.light-mode .bg-emerald-600\/15 svg,
+html.light-mode .bg-emerald-600\/15 div {
+  color: #047857 !important;
+}
+
+/* High Contrast Typography Rules */
+html.light-mode h1, 
+html.light-mode h2, 
+html.light-mode h3, 
+html.light-mode h4,
+html.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+html.light-mode p,
+html.light-mode .text-slate-300,
+html.light-mode .text-slate-200,
+html.light-mode .text-slate-100 {
+  color: #334155 !important;
+}
+
+html.light-mode .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.light-mode .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Border Overrides */
+html.light-mode .border-slate-800,
+html.light-mode .border-slate-800\/80,
+html.light-mode .border-slate-800\/50,
+html.light-mode .border-slate-700 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Modal Backdrops */
 html.light-mode .fixed.inset-0.bg-slate-950\/80,
 html.light-mode .fixed.inset-0.bg-slate-950\/90,
 html.light-mode .fixed.inset-0.bg-slate-950\/95,
@@ -35,82 +180,14 @@ html.light-mode .fixed.inset-0.bg-slate-950\/70 {
   -webkit-backdrop-filter: blur(8px) !important;
 }
 
-/* Light Mode Drawer Modals Typography & Headers */
-html.light-mode .fixed.inset-0 h1,
-html.light-mode .fixed.inset-0 h2,
-html.light-mode .fixed.inset-0 h3,
-html.light-mode .fixed.inset-0 h4,
-html.light-mode .fixed.inset-0 .text-white {
-  color: #0f172a !important;
-}
-
-/* Inset Inner Sub-Containers & Header Blocks */
-html.light-mode .bg-slate-950,
-html.light-mode .bg-slate-950\/60,
-html.light-mode .bg-slate-950\/50,
-html.light-mode .bg-slate-950\/40 {
-  background-color: #f8fafc !important;
-  color: var(--text-primary, #0f172a);
-  border-color: #e2e8f0 !important;
-}
-
-/* Main Surface Cards & Modals */
-html.light-mode .bg-slate-900,
-html.light-mode .bg-slate-900\/60,
-html.light-mode .bg-slate-900\/50,
-html.light-mode .bg-slate-900\/40,
-html.light-mode .bg-slate-900\/80,
-html.light-mode .bg-slate-900\/90 {
-  background-color: #ffffff !important;
-  color: var(--text-primary, #0f172a);
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04) !important;
-}
-
-/* StatCard Watermark Visibility in Light Mode */
-html.light-mode .stat-card-watermark {
-  color: rgba(15, 23, 42, 0.08) !important;
-}
-
-/* Light Mode Translucent Glass Sidebar & Header Navigation */
-html.light-mode aside,
-html.light-mode header {
-  background-color: rgba(248, 250, 252, 0.85) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border-color: #cbd5e1 !important;
-}
-
-/* Neutral White Translucent Glass Pane Footer in Light Mode */
+/* Neutral Soft Slate Glass Pane Footer in Light Mode */
 html.light-mode footer {
-  background-color: rgba(255, 255, 255, 0.85) !important;
+  background-color: rgba(241, 245, 249, 0.95) !important;
   background-image: none !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border-color: #e2e8f0 !important;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02) !important;
-}
-
-html.light-mode aside h1,
-html.light-mode header h1,
-html.light-mode header h2,
-html.light-mode header h3 {
-  color: #0f172a !important;
-}
-
-html.light-mode aside .text-white,
-html.light-mode header .text-white,
-html.light-mode footer .text-white {
-  color: #0f172a !important;
-}
-
-html.light-mode header p,
-html.light-mode footer .text-slate-400 {
-  color: #64748b !important;
-}
-
-html.light-mode footer .text-slate-300 {
-  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
 }
 
 /* PREVENT INVISIBLE TEXT ON HOVER IN LIGHT MODE */
@@ -120,9 +197,15 @@ html.light-mode .hover\:text-white:hover {
 
 html.light-mode .hover\:bg-slate-800:hover,
 html.light-mode .hover\:bg-slate-900:hover,
-html.light-mode .hover\:bg-white\/5:hover {
+html.light-mode .hover\:bg-white\/5:hover,
+html.light-mode label.hover\:bg-slate-900:hover {
   background-color: #f1f5f9 !important;
   color: #0f172a !important;
+}
+
+/* StatCard Watermark Visibility in Light Mode */
+html.light-mode .stat-card-watermark {
+  color: rgba(15, 23, 42, 0.08) !important;
 }
 
 /* Status Indicator Dots in Light Mode */
@@ -161,14 +244,7 @@ html.light-mode .bg-red-500\/10 {
   border-color: #fecaca !important;
 }
 
-/* Light Mode Borders */
-html.light-mode .border-slate-800,
-html.light-mode .border-slate-800\/50,
-html.light-mode .border-slate-800\/80 {
-  border-color: #e2e8f0 !important;
-}
-
-/* DEDICATED CLEAN LIGHT MODE TABLES (CRISP HIGH CONTRAST TEXT) */
+/* DEDICATED CLEAN LIGHT MODE TABLES */
 html.light-mode table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -178,105 +254,24 @@ html.light-mode table {
 html.light-mode thead,
 html.light-mode thead tr,
 html.light-mode thead th {
-  background-color: #f8fafc !important;
+  background-color: #f1f5f9 !important;
   color: #334155 !important;
   font-weight: 800 !important;
-  border-bottom: 2px solid #e2e8f0 !important;
-  border-top: none !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-html.light-mode th.text-slate-500,
-html.light-mode th.text-slate-400 {
-  color: #334155 !important;
-}
-
-html.light-mode tbody {
-  background-color: #ffffff !important;
+  border-bottom: 2px solid #cbd5e1 !important;
 }
 
 html.light-mode tbody tr {
   background-color: #ffffff !important;
   border-bottom: 1px solid #e2e8f0 !important;
-  box-shadow: none !important;
-  transform: none !important;
-  transition: background-color 0.15s ease !important;
 }
 
 html.light-mode tbody tr:hover {
   background-color: #f8fafc !important;
-  box-shadow: none !important;
-  transform: none !important;
 }
 
 html.light-mode td {
   border-color: #e2e8f0 !important;
   color: #0f172a !important;
-}
-
-html.light-mode td span.text-white,
-html.light-mode td p.text-white,
-html.light-mode td .text-white {
-  color: #0f172a !important;
-}
-
-html.light-mode td .font-mono {
-  color: #1e293b !important;
-}
-
-html.light-mode td .text-slate-400,
-html.light-mode td .text-slate-500 {
-  color: #475569 !important;
-}
-
-/* Light Mode Typography */
-html.light-mode h1,
-html.light-mode h2,
-html.light-mode h3,
-html.light-mode h4,
-html.light-mode p {
-  color: var(--text-primary, #0f172a);
-}
-
-html.light-mode .text-slate-200,
-html.light-mode .text-slate-300 {
-  color: var(--text-secondary, #1e293b) !important;
-}
-
-html.light-mode .text-slate-400 {
-  color: var(--text-muted, #475569) !important;
-}
-
-html.light-mode .text-slate-500 {
-  color: var(--text-muted, #64748b) !important;
-}
-
-/* Pastel & Neon Text Contrast Shifts for Light Surfaces */
-html.light-mode .text-purple-400 { color: #7e22ce !important; }
-html.light-mode .text-purple-300 { color: #6b21a8 !important; }
-html.light-mode .text-emerald-400 { color: #047857 !important; }
-html.light-mode .text-emerald-300 { color: #065f46 !important; }
-html.light-mode .text-blue-400 { color: #1d4ed8 !important; }
-html.light-mode .text-blue-300 { color: #1e40af !important; }
-html.light-mode .text-amber-400 { color: #b45309 !important; }
-html.light-mode .text-amber-300 { color: #92400e !important; }
-html.light-mode .text-green-400 { color: #15803d !important; }
-html.light-mode .text-green-300 { color: #166534 !important; }
-html.light-mode .text-red-400 { color: #b91c1c !important; }
-
-/* Form Controls & Inputs */
-html.light-mode input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
-html.light-mode select,
-html.light-mode textarea {
-  background-color: #ffffff !important;
-  color: var(--text-primary, #0f172a) !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light-mode input::placeholder,
-html.light-mode textarea::placeholder {
-  color: var(--text-muted, #94a3b8) !important;
 }
 
 /* Light Mode Action Buttons: High Contrast Text */
@@ -305,7 +300,7 @@ html.light-mode button.bg-slate-950,
 html.light-mode button.bg-slate-800,
 html.light-mode .bg-slate-800 {
   background-color: #ffffff !important;
-  color: var(--text-primary, #0f172a) !important;
+  color: #0f172a !important;
   border-color: #cbd5e1 !important;
 }
 

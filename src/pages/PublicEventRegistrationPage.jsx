@@ -5,6 +5,7 @@ import { fetchEventById } from '../api/events';
 import { insertAttendee } from '../api/attendees';
 import { LoadingSpinner, Footer } from '../components';
 import { generateConfirmationPDF } from '../utils/confirmationPdfGenerator';
+import { getPortalSettings } from '../utils/portalSettings';
 import { 
   CheckCircle2, UserPlus, FileText, Sparkles, UserCheck, ShieldCheck, 
   AlertCircle, Upload, Trash2, Calendar, Clock, MapPin, ArrowRight, Check,
@@ -18,6 +19,7 @@ const PublicEventRegistrationPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submittedAttendee, setSubmittedAttendee] = useState(null);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [bannerError, setBannerError] = useState(false);
   
   const [participantType, setParticipantType] = useState('student'); // 'student' | 'guest'
   const [formData, setFormData] = useState({
@@ -159,13 +161,16 @@ const PublicEventRegistrationPage = () => {
     );
   }
 
+  const settings = getPortalSettings();
+  const isLightMode = settings.themeMode === 'light' || (typeof document !== 'undefined' && document.documentElement.classList.contains('light-mode'));
+
   const theme = eventObj.theme_config || {
     primary_color: '#9333ea',
     secondary_color: '#4f46e5',
     accent_color: '#10b981',
     banner_url: '',
     bg_url: '',
-    bg_color: '#090d16'
+    bg_color: isLightMode ? '#f8fafc' : '#090d16'
   };
 
   const schema = eventObj.form_schema || [];
@@ -173,35 +178,39 @@ const PublicEventRegistrationPage = () => {
   return (
     <div 
       className="min-h-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden flex flex-col justify-between selection:bg-purple-500 selection:text-white"
-      style={{ backgroundColor: theme.bg_color || '#090d16', backgroundImage: theme.bg_url ? `url(${theme.bg_url})` : 'none' }}
+      style={{ backgroundColor: isLightMode ? '#f8fafc' : (theme.bg_color || '#090d16'), backgroundImage: theme.bg_url ? `url(${theme.bg_url})` : 'none' }}
     >
-      {/* AMBIENT BACKGROUND GLOWS */}
-      <div 
-        className="fixed top-0 left-1/4 -translate-x-1/2 w-[600px] h-[350px] rounded-full blur-[160px] opacity-25 pointer-events-none"
-        style={{ backgroundColor: theme.primary_color }}
-      />
-      <div 
-        className="fixed bottom-0 right-1/4 translate-x-1/2 w-[500px] h-[300px] rounded-full blur-[140px] opacity-20 pointer-events-none"
-        style={{ backgroundColor: theme.secondary_color || theme.primary_color }}
-      />
+      {/* AMBIENT BACKGROUND GLOWS (DARK MODE ONLY) */}
+      {!isLightMode && (
+        <>
+          <div 
+            className="fixed top-0 left-1/4 -translate-x-1/2 w-[600px] h-[350px] rounded-full blur-[160px] opacity-25 pointer-events-none"
+            style={{ backgroundColor: theme.primary_color }}
+          />
+          <div 
+            className="fixed bottom-0 right-1/4 translate-x-1/2 w-[500px] h-[300px] rounded-full blur-[140px] opacity-20 pointer-events-none"
+            style={{ backgroundColor: theme.secondary_color || theme.primary_color }}
+          />
+        </>
+      )}
 
       {/* TOP EVENT WEBPAGE NAVIGATION BAR */}
-      <header className="sticky top-0 z-50 w-full bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 sm:px-8 py-3.5">
+      <header className={`sticky top-0 z-50 w-full ${isLightMode ? 'bg-[#f8fafc]/95 border-slate-200' : 'bg-slate-950/90 border-slate-800/80'} backdrop-blur-xl border-b px-4 sm:px-8 py-3.5`}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 p-2 flex items-center justify-center shadow-lg">
+            <div className={`w-10 h-10 rounded-xl ${isLightMode ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'} border p-2 flex items-center justify-center shadow-sm`}>
               <img src="/transparent_logo.webp" alt="IUBPC Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+              <h1 className={`text-sm font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight flex items-center gap-2`}>
                 <span>Independent University, Bangladesh</span>
               </h1>
-              <p className="text-[11px] text-slate-400">Department of Computer Science & Engineering</p>
+              <p className={`text-[11px] ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Department of Computer Science & Engineering</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="hidden md:flex items-center gap-2 text-xs text-slate-400 font-medium bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-full">
+            <span className={`hidden md:flex items-center gap-2 text-xs ${isLightMode ? 'text-slate-700 bg-white border-slate-200' : 'text-slate-400 bg-slate-900 border-slate-800'} font-medium border px-3.5 py-1.5 rounded-full shadow-sm`}>
               <Award size={14} className="text-amber-400" />
               <span>Official Event Registration</span>
             </span>
@@ -209,66 +218,64 @@ const PublicEventRegistrationPage = () => {
         </div>
       </header>
 
-      {/* FULL-WIDTH HERO BANNER SECTION */}
-      <div className="w-full relative border-b border-slate-800/80 overflow-hidden bg-slate-900">
-        {theme.banner_url ? (
-          <div className="w-full h-64 sm:h-80 md:h-96 relative overflow-hidden group">
-            <img 
-              src={theme.banner_url} 
-              alt={eventObj.title} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/20" />
+      {/* MODERN INTEGRATED HERO CONTAINER */}
+      <div className="max-w-6xl mx-auto w-full px-4 sm:px-8 mt-6 sm:mt-8 text-left">
+        <div className={`relative rounded-3xl overflow-hidden border ${isLightMode ? 'border-slate-200/80 bg-white shadow-lg' : 'border-slate-800/80 bg-slate-900 shadow-2xl'}`}>
+          
+          {/* BANNER GRAPHIC */}
+          <div className="w-full h-48 sm:h-64 md:h-80 relative overflow-hidden">
+            {theme.banner_url && !bannerError ? (
+              <img 
+                src={theme.banner_url} 
+                alt={eventObj.title} 
+                className="w-full h-full object-cover" 
+                onError={() => setBannerError(true)}
+              />
+            ) : (
+              <div 
+                className="w-full h-full relative"
+                style={{ background: isLightMode ? 'linear-gradient(135deg, rgba(147, 51, 234, 0.12), rgba(79, 70, 229, 0.08))' : `linear-gradient(135deg, ${theme.primary_color}35, ${theme.secondary_color || theme.primary_color}15)` }}
+              >
+                <div className={`absolute inset-0 ${isLightMode ? 'bg-[radial-gradient(#9333ea_1px,transparent_1px)] opacity-10' : 'bg-[radial-gradient(#ffffff_1px,transparent_1px)] opacity-10'} [background-size:24px_24px]`} />
+              </div>
+            )}
+            <div className={`absolute inset-0 ${isLightMode ? 'bg-gradient-to-t from-white via-white/50 to-transparent' : 'bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent'}`} />
           </div>
-        ) : (
-          <div 
-            className="w-full h-56 sm:h-72 relative p-8 flex flex-col justify-end text-left overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${theme.primary_color}40, ${theme.secondary_color || theme.primary_color}20)` }}
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] opacity-10" />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-          </div>
-        )}
 
-        {/* OVERLAID HERO TEXT CONTENT CARD */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-8 relative z-10 -mt-20 sm:-mt-28 pb-8 text-left">
-          <div className="space-y-4 bg-slate-950/85 backdrop-blur-xl border border-slate-800/80 p-6 sm:p-8 rounded-3xl shadow-2xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold text-white shadow-lg" style={{ backgroundColor: theme.primary_color }}>
-              <Sparkles size={14} />
-              <span>Open for Registration</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight leading-tight">
+          {/* HERO TEXT & METRICS */}
+          <div className="p-6 sm:p-8 -mt-16 sm:-mt-20 relative z-10 space-y-4">
+            <h1 className={`text-2xl sm:text-4xl md:text-5xl font-black ${isLightMode ? 'text-slate-900' : 'text-white'} tracking-tight leading-tight`}>
               {eventObj.title}
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
-              Join us for an exciting event at Independent University, Bangladesh. Fill in your details below to secure your entry pass.
+            <p className={`text-xs sm:text-sm ${isLightMode ? 'text-slate-600' : 'text-slate-300'} max-w-2xl leading-relaxed`}>
+              Join us for an exciting event at Independent University, Bangladesh. Complete your registration details below to receive your official digital entry pass.
             </p>
 
-            {/* EVENT QUICK METRICS */}
-            <div className="flex flex-wrap gap-3 pt-2 text-xs font-medium">
-              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-200 shadow-sm">
-                <Calendar size={16} className="text-purple-400" />
+            {/* EVENT METRICS */}
+            <div className="flex flex-wrap gap-2.5 pt-1 text-xs font-medium">
+              <div className={`flex items-center gap-2 ${isLightMode ? 'bg-purple-50 border-purple-200/80 text-purple-900' : 'bg-slate-800/80 border-slate-700/60 text-slate-200'} border px-3.5 py-1.5 rounded-xl shadow-xs`}>
+                <Calendar size={14} className="text-purple-600" />
                 <span>{eventObj.date || 'TBA'}</span>
               </div>
 
-              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-200 shadow-sm">
-                <Clock size={16} className="text-emerald-400" />
+              <div className={`flex items-center gap-2 ${isLightMode ? 'bg-emerald-50 border-emerald-200/80 text-emerald-900' : 'bg-slate-800/80 border-slate-700/60 text-slate-200'} border px-3.5 py-1.5 rounded-xl shadow-xs`}>
+                <Clock size={14} className="text-emerald-600" />
                 <span>{eventObj.time || '10:00 AM'}</span>
               </div>
 
-              <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl text-slate-200 shadow-sm">
-                <MapPin size={16} className="text-blue-400" />
+              <div className={`flex items-center gap-2 ${isLightMode ? 'bg-blue-50 border-blue-200/80 text-blue-900' : 'bg-slate-800/80 border-slate-700/60 text-slate-200'} border px-3.5 py-1.5 rounded-xl shadow-xs`}>
+                <MapPin size={14} className="text-blue-600" />
                 <span>IUB Campus, Dhaka</span>
               </div>
             </div>
           </div>
+
         </div>
       </div>
 
       {/* MAIN TWO-COLUMN RESPONSIVE LAYOUT */}
-      <main className="max-w-6xl mx-auto w-full px-4 sm:px-8 py-10 sm:py-14 flex-1">
+      <main className="max-w-6xl mx-auto w-full px-4 sm:px-8 py-4 sm:py-6 flex-1">
         {submittedAttendee ? (
           /* REGISTRATION SUCCESS PAGE CARD */
           <div className="max-w-2xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl p-8 sm:p-12 text-center space-y-8 shadow-2xl backdrop-blur-xl">
@@ -326,10 +333,10 @@ const PublicEventRegistrationPage = () => {
           </div>
         ) : (
           /* RESPONSIVE DUAL COLUMN REGISTRATION FORM */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start text-left">
             
-            {/* LEFT COLUMN: REGISTRATION FORM (8 COLUMNS ON DESKTOP) */}
-            <div className="lg:col-span-8 space-y-8">
+            {/* LEFT COLUMN: REGISTRATION FORM (ORDER 2 ON MOBILE, ORDER 1 ON DESKTOP) */}
+            <div className="order-2 lg:order-1 lg:col-span-8 space-y-8">
               <form onSubmit={handleSubmit} className="space-y-8">
                 
                 {formError && (
@@ -355,31 +362,39 @@ const PublicEventRegistrationPage = () => {
                     <button
                       type="button"
                       onClick={() => setParticipantType('student')}
-                      className={`p-4 rounded-xl border text-left transition-all flex items-center justify-between ${participantType === 'student' ? 'bg-purple-600/15 border-purple-500 text-white shadow-md' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                      className={`p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                        participantType === 'student'
+                          ? (isLightMode ? 'bg-purple-50 border-purple-500 text-purple-900 shadow-sm' : 'bg-purple-600/15 border-purple-500 text-white shadow-md')
+                          : (isLightMode ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700')
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <UserCheck size={18} className={participantType === 'student' ? 'text-purple-400' : 'text-slate-500'} />
+                        <UserCheck size={18} className={participantType === 'student' ? 'text-purple-500' : 'text-slate-400'} />
                         <div>
-                          <span className="text-xs font-bold block">Student / Member</span>
-                          <span className="text-[11px] text-slate-400 block">Requires Student ID</span>
+                          <span className={`text-xs font-bold block ${isLightMode && participantType !== 'student' ? 'text-slate-800' : ''}`}>Student / Member</span>
+                          <span className={`text-[11px] block ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Requires Student ID</span>
                         </div>
                       </div>
-                      {participantType === 'student' && <Check size={16} className="text-purple-400" />}
+                      {participantType === 'student' && <Check size={16} className="text-purple-500" />}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => setParticipantType('guest')}
-                      className={`p-4 rounded-xl border text-left transition-all flex items-center justify-between ${participantType === 'guest' ? 'bg-emerald-600/15 border-emerald-500 text-white shadow-md' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                      className={`p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
+                        participantType === 'guest'
+                          ? (isLightMode ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-sm' : 'bg-emerald-600/15 border-emerald-500 text-white shadow-md')
+                          : (isLightMode ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700')
+                      }`}
                     >
                       <div className="flex items-center gap-3">
-                        <ShieldCheck size={18} className={participantType === 'guest' ? 'text-emerald-400' : 'text-slate-500'} />
+                        <ShieldCheck size={18} className={participantType === 'guest' ? 'text-emerald-500' : 'text-slate-400'} />
                         <div>
-                          <span className="text-xs font-bold block">Guest / Visitor</span>
-                          <span className="text-[11px] text-slate-400 block">Requires Host Reference</span>
+                          <span className={`text-xs font-bold block ${isLightMode && participantType !== 'guest' ? 'text-slate-800' : ''}`}>Guest / Visitor</span>
+                          <span className={`text-[11px] block ${isLightMode ? 'text-slate-500' : 'text-slate-400'}`}>Requires Host Reference</span>
                         </div>
                       </div>
-                      {participantType === 'guest' && <Check size={16} className="text-emerald-400" />}
+                      {participantType === 'guest' && <Check size={16} className="text-emerald-500" />}
                     </button>
                   </div>
                 </div>
@@ -618,51 +633,51 @@ const PublicEventRegistrationPage = () => {
               </form>
             </div>
 
-            {/* RIGHT COLUMN: EVENT INFORMATION SIDEBAR (4 COLUMNS ON DESKTOP) */}
-            <div className="lg:col-span-4 space-y-6">
+            {/* RIGHT COLUMN: EVENT INFORMATION SIDEBAR (ORDER 1 ON MOBILE, ORDER 2 ON DESKTOP) */}
+            <div className="order-1 lg:order-2 lg:col-span-4 space-y-6">
               
               {/* VENUE & SCHEDULE CARD */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-4 backdrop-blur-md">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-3 flex items-center gap-2">
-                  <Info size={14} className="text-purple-400" />
+              <div className={`p-6 space-y-4 rounded-2xl border ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'}`}>
+                <h4 className={`text-xs font-bold ${isLightMode ? 'text-slate-900 border-slate-200' : 'text-white border-slate-800'} uppercase tracking-wider border-b pb-3 flex items-center gap-2`}>
+                  <Info size={14} className="text-purple-500" />
                   <span>Event Overview</span>
                 </h4>
 
-                <div className="space-y-3.5 text-xs text-slate-300">
+                <div className="space-y-3.5 text-xs">
                   <div className="flex items-start gap-3">
-                    <Calendar size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                    <Calendar size={16} className="text-purple-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-white block">Event Date</span>
-                      <span className="text-slate-400">{eventObj.date || 'To be announced'}</span>
+                      <span className={`font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'} block`}>Event Date</span>
+                      <span className={isLightMode ? 'text-slate-600' : 'text-slate-400'}>{eventObj.date || 'To be announced'}</span>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <Clock size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                    <Clock size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-white block">Event Time</span>
-                      <span className="text-slate-400">{eventObj.time || '10:00 AM'}</span>
+                      <span className={`font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'} block`}>Event Time</span>
+                      <span className={isLightMode ? 'text-slate-600' : 'text-slate-400'}>{eventObj.time || '10:00 AM'}</span>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <MapPin size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                    <MapPin size={16} className="text-blue-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold text-white block">Venue Location</span>
-                      <span className="text-slate-400">Independent University, Bangladesh (IUB)</span>
-                      <span className="text-[11px] text-slate-500 block">Plot 16 Block B, Bashundhara R/A, Dhaka</span>
+                      <span className={`font-semibold ${isLightMode ? 'text-slate-900' : 'text-white'} block`}>Venue Location</span>
+                      <span className={isLightMode ? 'text-slate-600' : 'text-slate-400'}>Independent University, Bangladesh (IUB)</span>
+                      <span className={`text-[11px] ${isLightMode ? 'text-slate-500' : 'text-slate-500'} block`}>Plot 16 Block B, Bashundhara R/A, Dhaka</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* REGISTRATION HELP CARD */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 space-y-3 backdrop-blur-md">
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <HelpCircle size={14} className="text-emerald-400" />
+              <div className={`p-6 space-y-3 rounded-2xl border ${isLightMode ? 'bg-white border-slate-200 shadow-xs' : 'bg-slate-900/60 border-slate-800/80 backdrop-blur-md'}`}>
+                <h4 className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} uppercase tracking-wider flex items-center gap-2`}>
+                  <HelpCircle size={14} className="text-emerald-500" />
                   <span>Registration Guidelines</span>
                 </h4>
-                <ul className="space-y-2 text-xs text-slate-400 list-disc pl-4 leading-relaxed">
+                <ul className={`space-y-2 text-xs ${isLightMode ? 'text-slate-600' : 'text-slate-400'} list-disc pl-4 leading-relaxed`}>
                   <li>Please ensure your name and ID match your university record.</li>
                   <li>Guest visitors must specify a faculty host or reference person.</li>
                   <li>Download your PDF Entry Pass upon completion for gate entry.</li>
@@ -670,11 +685,13 @@ const PublicEventRegistrationPage = () => {
               </div>
 
               {/* BRANDING MINI CARD */}
-              <div className="p-4 bg-slate-950/80 border border-slate-800/80 rounded-xl text-center space-y-1 shadow-sm">
-                <span className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
-                  <span>IUBPC Gatekeeper System</span>
+              <div className={`p-4 ${isLightMode ? 'bg-gradient-to-r from-purple-500/5 via-emerald-500/5 to-blue-500/5 border-slate-200/80 shadow-xs' : 'bg-slate-950/80 border-slate-800/80 shadow-sm'} border rounded-2xl text-center space-y-1`}>
+                <span className={`text-xs font-bold ${isLightMode ? 'text-slate-900' : 'text-white'} flex items-center justify-center gap-1.5`}>
+                  <span>{settings?.portalTitle || 'IUBPC Gatekeeper System'}</span>
                 </span>
-                <span className="text-[11px] text-slate-500 block">Department of Computer Science & Engineering</span>
+                <span className={`text-[11px] ${isLightMode ? 'text-slate-600' : 'text-slate-400'} block`}>
+                  {settings?.orgName || 'Department of Computer Science & Engineering'}
+                </span>
               </div>
 
             </div>

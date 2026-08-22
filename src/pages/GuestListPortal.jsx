@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2, Award, Sparkles, FileArchive, FileText, Eye, CheckCircle2, QrCode, LayoutGrid, List } from 'lucide-react';
-import Papa from 'papaparse';
+import { ChevronLeft, UserPlus, Search, Download, Clock, X, Pencil, Trash2, Award, Sparkles, FileArchive, FileText, Eye, CheckCircle2, QrCode, LayoutGrid, List } from 'lucide-react';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
+import { fetchEventAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
 import { LoadingSpinner, CertificateGeneratorModal, PassGeneratorModal, AddAttendeeModal } from '../components';
 import { generateConfirmationPDF } from '../utils/confirmationPdfGenerator';
 
@@ -98,45 +97,6 @@ const GuestListPortal = ({ userRole }) => {
     fetchAttendees();
   }, [eventId, fetchAttendees]);
 
-  const handleCsvUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const parsed = results.data.map(row => ({
-          event_id: eventId,
-          full_name: row.full_name || row.Name || row.name || 'CSV Guest',
-          student_id: row.student_id || row.Student_ID || row.id || `CSV-${Math.floor(1000 + Math.random() * 9000)}`,
-          email: row.email || row.Email || null,
-          phone: row.phone || row.Phone || null,
-          reference: row.reference || row.Reference || null,
-          category: 'Participant'
-        }));
-
-        const { error } = await bulkInsertAttendees(parsed);
-        if (!error) {
-          fetchAttendees();
-        } else {
-          alert("CSV Upload failed: " + error.message);
-        }
-      }
-    });
-  };
-
-  const downloadTemplate = () => {
-    const csvContent = "full_name,student_id,email,phone,reference\nJohn Doe,1920000,john@example.com,01700000000,REF123";
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "attendee_import_template.csv");
-    document.body.appendChild(link);
-    link.click();
-  };
-
   // Filter attendees
   const filtered = attendees.filter(a => {
     const matchesSearch = 
@@ -198,9 +158,6 @@ const GuestListPortal = ({ userRole }) => {
           </button>
 
           <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Add Attendee / On-Spot</button>
-          <label className="px-4 py-2.5 bg-green-500 text-slate-950 rounded-xl cursor-pointer hover:bg-green-400 transition-all active:scale-95 flex items-center justify-center border-b-4 border-green-700 shadow-xl font-black text-[9px] uppercase tracking-widest gap-2 italic">
-            <Upload size={16} /> Import CSV <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
-          </label>
         </div>
       </header>
 
@@ -245,8 +202,6 @@ const GuestListPortal = ({ userRole }) => {
               </button>
             </div>
 
-            <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-200 hover:text-green-400 uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={20}/> Get Template</button>
-            <div className="h-3 w-px bg-slate-800"></div>
             <span className="text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] italic leading-none">{filtered.length} Displayed</span>
           </div>
         </div>

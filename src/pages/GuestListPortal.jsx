@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2, Award, Sparkles, FileArchive } from 'lucide-react';
+import { ChevronLeft, UserPlus, Upload, Search, Download, Clock, X, Pencil, Trash2, Award, Sparkles, FileArchive, FileText, Eye, CheckCircle2, QrCode, LayoutGrid, List } from 'lucide-react';
 import Papa from 'papaparse';
 import { fetchEventById } from '../api/events';
-import { fetchEventAttendees, insertAttendee, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
-import { LoadingSpinner, CertificateGeneratorModal } from '../components';
+import { fetchEventAttendees, bulkInsertAttendees, updateAttendee, deleteAttendee } from '../api/attendees';
+import { LoadingSpinner, CertificateGeneratorModal, PassGeneratorModal, AddAttendeeModal } from '../components';
+import { generateConfirmationPDF } from '../utils/confirmationPdfGenerator';
 
 const GuestListPortal = ({ userRole }) => {
   const { id: eventId } = useParams();
@@ -14,11 +15,17 @@ const GuestListPortal = ({ userRole }) => {
   const [attendees, setAttendees] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
   const [showAdd, setShowAdd] = useState(false);
   const [showCertModal, setShowCertModal] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', email: '', sid: '', img: '', phone: '', ref: '' });
+
+  // Modals
+  const [editingAttendee, setEditingAttendee] = useState(null);
+  const [viewingAttendee, setViewingAttendee] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', sid: '', phone: '', ref: '' });
 
   const toggleSelectAll = (filteredList) => {
     if (selectedIds.length === filteredList.length) {
@@ -33,9 +40,6 @@ const GuestListPortal = ({ userRole }) => {
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
-
-  const [editingAttendee, setEditingAttendee] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', email: '', sid: '', phone: '', ref: '' });
 
   const openEditModal = (att) => {
     setEditingAttendee(att);
@@ -90,95 +94,56 @@ const GuestListPortal = ({ userRole }) => {
   }, [eventId]);
 
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const { data: eventData } = await fetchEventById(eventId);
-        if (!isMounted) return;
-        setEvent(eventData || { id: eventId, title: 'Event Attendee Portal' });
-        await fetchAttendees();
-      } catch (err) {
-        if (!isMounted) return;
-        setEvent({ id: eventId, title: 'Event Attendee Portal' });
-        await fetchAttendees();
-      }
-    };
-    loadData();
-    return () => {
-      isMounted = false;
-    };
+    fetchEventById(eventId).then(({ data }) => setEvent(data));
+    fetchAttendees();
   }, [eventId, fetchAttendees]);
 
-  const handleManualAdd = async (e) => {
-    e.preventDefault();
-    
-    // Pre-flight check for duplicates
-    const isDuplicate = attendees.some(a => 
-      (form.email && a.email?.toLowerCase() === form.email.toLowerCase()) || 
-      (form.sid && a.student_id === form.sid)
-    );
-
-    if (isDuplicate) {
-      alert("Attendee with this Email or Student ID already exists.");
-      return;
-    }
-
-    const { error } = await insertAttendee({ 
-      event_id: eventId, 
-      full_name: form.name, 
-      email: form.email, 
-      student_id: form.sid, 
-      avatar_url: form.img || null,
-      phone: form.phone,
-      reference: form.ref 
-    });
-    if (!error) { setShowAdd(false); setForm({ name:'', email:'', sid:'', img:'', phone:'', ref:'' }); fetchAttendees(); }
-    else alert(error.message);
-  };
-
   const handleCsvUpload = (e) => {
-    const file = e.target.files?.[0];
+    const file = e.target.files[0];
     if (!file) return;
-    Papa.parse(file, { header: true, skipEmptyLines: true, complete: async (res) => {
-      const data = res.data.filter(r => r.student_id).map(r => ({ 
-        event_id: eventId, 
-        full_name: r.name || 'Anonymous', 
-        email: r.email || '', 
-        student_id: r.student_id, 
-        avatar_url: r.image_link || null,
-        phone: r.phone || null,
-        reference: r.ref || r.reference || null
-      }));
-      const { error } = await bulkInsertAttendees(data);
-      if (!error) fetchAttendees();
-      else alert(error.message);
-    }});
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const parsed = results.data.map(row => ({
+          event_id: eventId,
+          full_name: row.full_name || row.Name || row.name || 'CSV Guest',
+          student_id: row.student_id || row.Student_ID || row.id || `CSV-${Math.floor(1000 + Math.random() * 9000)}`,
+          email: row.email || row.Email || null,
+          phone: row.phone || row.Phone || null,
+          reference: row.reference || row.Reference || null,
+          category: 'Participant'
+        }));
+
+        const { error } = await bulkInsertAttendees(parsed);
+        if (!error) {
+          fetchAttendees();
+        } else {
+          alert("CSV Upload failed: " + error.message);
+        }
+      }
+    });
   };
 
   const downloadTemplate = () => {
-    try {
-      const csvData = "name,email,student_id,image_link,phone,ref\nSample Name,sample@iub.edu.bd,2120000,https://i.pravatar.cc/150,01700000000,N/A";
-      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "iubpc_template.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 100);
-    } catch (e) {
-      console.error("Download failed", e);
-    }
+    const csvContent = "full_name,student_id,email,phone,reference\nJohn Doe,1920000,john@example.com,01700000000,REF123";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "attendee_import_template.csv");
+    document.body.appendChild(link);
+    link.click();
   };
 
+  // Filter attendees
   const filtered = attendees.filter(a => {
     const matchesSearch = 
-      a.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      a.student_id?.includes(searchTerm) ||
+      a.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.student_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      a.phone?.includes(searchTerm);
+      a.reference?.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -186,25 +151,23 @@ const GuestListPortal = ({ userRole }) => {
     if (statusFilter === 'pending') return !a.checked_in_1 && !a.checked_in_2;
     if (statusFilter === 'token') return a.token_given;
     if (statusFilter === 'gift') return a.checked_in_2;
-
     return true;
   });
 
-  if (!event && loading) return <LoadingSpinner />;
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 italic">
-      <header className="flex justify-between items-end italic">
-        <div className="flex items-center gap-4 italic">
+    <div className="space-y-6 animate-in fade-in duration-500 font-sans italic">
+      {/* HEADER */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900/60 p-6 rounded-3xl border border-slate-800 backdrop-blur-xl">
+        <div className="flex items-center gap-4">
           <button 
-            onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/events')}
-            className="p-2.5 bg-slate-900 border border-slate-800 text-slate-400 hover:text-white rounded-xl transition-all active:scale-95 italic shadow-lg"
+            onClick={() => window.history.state?.idx > 0 ? navigate(-1) : navigate('/events')} 
+            className="p-3 bg-slate-950 border border-slate-800 rounded-2xl text-slate-400 hover:text-white transition-all active:scale-95 shadow-lg"
           >
-            <ChevronLeft size={20}/>
+            <ChevronLeft size={20} />
           </button>
           <div>
             <h2 className="text-2xl lg:text-3xl font-black italic text-white uppercase tracking-tighter italic leading-none">{event?.title}</h2>
-            <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Attendee Database</p>
+            <p className="text-purple-400 text-[9px] font-black uppercase tracking-[0.3em] mt-2 italic">Attendee Database & Pass Generator</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -225,13 +188,23 @@ const GuestListPortal = ({ userRole }) => {
             <FileArchive size={16}/> Generate Certificates {selectedIds.length > 0 ? `(${selectedIds.length} Selected)` : ''}
           </button>
 
-          <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Add Attendee</button>
+          <button
+            onClick={() => setShowPassModal(true)}
+            className="px-4 py-2.5 bg-slate-900 text-emerald-400 hover:text-emerald-300 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"
+            title="Export Registration Passes (Multi-Page PDF / ZIP Archive)"
+          >
+            <FileText size={16}/> 
+            <span>Export Passes {selectedIds.length > 0 ? `(${selectedIds.length} Selected)` : ''}</span>
+          </button>
+
+          <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 bg-slate-800 text-green-400 rounded-xl border border-slate-700 active:scale-95 shadow-lg transition-all font-black text-[9px] uppercase tracking-widest flex items-center gap-2"><UserPlus size={16}/> Add Attendee / On-Spot</button>
           <label className="px-4 py-2.5 bg-green-500 text-slate-950 rounded-xl cursor-pointer hover:bg-green-400 transition-all active:scale-95 flex items-center justify-center border-b-4 border-green-700 shadow-xl font-black text-[9px] uppercase tracking-widest gap-2 italic">
             <Upload size={16} /> Import CSV <input type="file" className="hidden" accept=".csv" onChange={handleCsvUpload} />
           </label>
         </div>
       </header>
 
+      {/* FILTER & TOOLBAR WITH TABLE/GRID VIEW TOGGLE */}
       <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl space-y-4 italic shadow-xl">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center italic">
           <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full md:w-auto">
@@ -254,6 +227,24 @@ const GuestListPortal = ({ userRole }) => {
           </div>
 
           <div className="flex items-center gap-4 italic">
+            {/* VIEW MODE TOGGLE BUTTONS */}
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <button 
+                onClick={() => setViewMode('table')}
+                className={`p-2 rounded-lg transition-all flex items-center justify-center ${viewMode === 'table' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                title="Table List View"
+              >
+                <List size={15} />
+              </button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-all flex items-center justify-center ${viewMode === 'grid' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                title="Card Grid View"
+              >
+                <LayoutGrid size={15} />
+              </button>
+            </div>
+
             <button onClick={downloadTemplate} className="text-[9px] font-black text-slate-200 hover:text-green-400 uppercase tracking-widest flex items-center gap-2 transition-all italic leading-none"><Download size={20}/> Get Template</button>
             <div className="h-3 w-px bg-slate-800"></div>
             <span className="text-[9px] font-black text-purple-400 uppercase tracking-[0.2em] italic leading-none">{filtered.length} Displayed</span>
@@ -266,150 +257,251 @@ const GuestListPortal = ({ userRole }) => {
           <div className="py-20 flex justify-center opacity-10"><Clock className="animate-spin" size={40}/></div>
         ) : (
           <>
-            {/* Mobile View */}
-            <div className="lg:hidden grid grid-cols-1 gap-3 max-w-2xl mx-auto pb-40">
-              {filtered.map(row => (
-                <div key={row.id} className="bg-slate-900 border border-slate-800 p-6 rounded-[2.8rem] flex items-center justify-between group hover:border-slate-700 transition-all shadow-xl relative overflow-hidden italic">
-                  <div className="flex items-center gap-4 relative z-10">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedIds.includes(row.id)} 
-                      onChange={() => toggleSelect(row.id)} 
-                      className="w-5 h-5 accent-purple-500 rounded cursor-pointer shrink-0" 
-                    />
-                    <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-14 h-14 rounded-3xl border-2 border-slate-950 object-cover bg-slate-800 shadow-md shrink-0" />
-                    <div>
-                        <p className="text-base font-black text-white italic leading-none truncate max-w-[150px] uppercase tracking-tighter">{row.full_name}</p>
-                        <p className="text-[10px] font-bold text-slate-600 uppercase mt-2 tracking-tight italic">ID: {row.student_id}</p>
-                        {row.phone && <p className="text-[10px] font-bold text-green-500 uppercase tracking-tight italic mt-0.5">{row.phone}</p>}
-                        {row.reference && <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest mt-1 italic">Ref: {row.reference}</p>}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1.5 items-end relative z-10 opacity-30 group-hover:opacity-100 transition-opacity">
-                    <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${row.checked_in_1 ? 'bg-green-500 shadow-green-500/20' : 'bg-slate-800 animate-pulse'}`}></div>
-                    <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${row.token_given ? 'bg-purple-500 shadow-purple-500/20' : 'bg-slate-800'}`}></div>
-                    <div className={`w-3.5 h-3.5 rounded-full shadow-lg ${row.checked_in_2 ? 'bg-blue-500 shadow-blue-500/20' : 'bg-slate-800'}`}></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop View */}
-            <div className="hidden lg:block max-w-6xl mx-auto pb-40">
-              <div className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-950/50 border-b border-slate-800">
-                      <th className="p-6 w-12 text-center">
+            {/* VIEW MODE A: GRID VIEW */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto pb-40">
+                {filtered.map(row => (
+                  <div key={row.id} className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl hover:border-slate-700 transition-all flex flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
                         <input 
                           type="checkbox" 
-                          checked={filtered.length > 0 && selectedIds.length === filtered.length} 
-                          onChange={() => toggleSelectAll(filtered)} 
-                          className="w-4 h-4 accent-purple-500 rounded cursor-pointer" 
+                          checked={selectedIds.includes(row.id)} 
+                          onChange={() => toggleSelect(row.id)} 
+                          className="w-5 h-5 accent-purple-500 rounded cursor-pointer shrink-0" 
                         />
-                      </th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Attendee</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
-                      <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Gift</th>
-                      {isAdmin && <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/50">
-                    {filtered.map(row => (
-                      <tr key={row.id} className="hover:bg-slate-800/30 transition-colors group">
-                        <td className="p-6 w-12 text-center">
+                        <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.full_name)}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-950 object-cover bg-slate-800 shrink-0" />
+                        <div>
+                          <p className="text-sm font-bold text-white uppercase tracking-tight truncate max-w-[140px]">{row.full_name}</p>
+                          <p className="text-[10px] font-mono text-slate-400">ID: {row.student_id}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <div className={`w-3 h-3 rounded-full ${row.checked_in_1 ? 'bg-green-500' : 'bg-slate-800'}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${row.token_given ? 'bg-purple-500' : 'bg-slate-800'}`}></div>
+                        <div className={`w-3 h-3 rounded-full ${row.checked_in_2 ? 'bg-blue-500' : 'bg-slate-800'}`}></div>
+                      </div>
+                    </div>
+
+                    {/* ROW ACTION BAR (VIEW, EDIT, DELETE) */}
+                    <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-1.5">
+                      <button onClick={() => setViewingAttendee(row)} className="p-2 bg-slate-950 border border-slate-800 hover:border-purple-500 text-purple-400 rounded-xl transition-all" title="View Attendee Profile & Export Documents">
+                        <Eye size={15} />
+                      </button>
+
+                      {isAdmin && (
+                        <>
+                          <button onClick={() => openEditModal(row)} className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500 text-blue-400 rounded-xl transition-all" title="Edit Attendee">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => handleDeleteAttendee(row)} className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500 text-red-400 rounded-xl transition-all" title="Delete Attendee">
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* VIEW MODE B: TABLE LIST VIEW */}
+            {viewMode === 'table' && (
+              <div className="max-w-6xl mx-auto pb-40">
+                <div className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950/50 border-b border-slate-800">
+                        <th className="p-6 w-12 text-center">
                           <input 
                             type="checkbox" 
-                            checked={selectedIds.includes(row.id)} 
-                            onChange={() => toggleSelect(row.id)} 
+                            checked={filtered.length > 0 && selectedIds.length === filtered.length} 
+                            onChange={() => toggleSelectAll(filtered)} 
                             className="w-4 h-4 accent-purple-500 rounded cursor-pointer" 
                           />
-                        </td>
-                        <td className="p-6">
-                          <div className="flex items-center gap-4">
-                            <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${row.full_name}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-950 object-cover bg-slate-800" />
-                            <div>
-                                <span className="text-sm font-black text-white uppercase tracking-tight block">{row.full_name}</span>
-                                {row.reference && <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest mt-1 block">Ref: {row.reference}</span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <div className="space-y-1">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
-                            {row.phone && <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider">{row.phone}</p>}
-                            <p className="text-xs font-medium text-slate-400 lowercase">{row.email}</p>
-                          </div>
-                        </td>
-                        <td className="p-6 text-center">
-                          <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.checked_in_1 ? 'bg-green-500 shadow-green-500/40' : 'bg-slate-800'}`}></div>
-                        </td>
-                        <td className="p-6 text-center">
-                          <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.token_given ? 'bg-purple-500 shadow-purple-500/40' : 'bg-slate-800'}`}></div>
-                        </td>
-                        <td className="p-6 text-center">
-                          <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.checked_in_2 ? 'bg-blue-500 shadow-blue-500/40' : 'bg-slate-800'}`}></div>
-                        </td>
-                        {isAdmin && (
-                          <td className="p-6 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
-                                  setSelectedIds([row.id]);
-                                  setShowCertModal(true);
-                                }}
-                                className="p-2 bg-slate-950 border border-slate-800 hover:border-purple-500/50 text-purple-400 hover:text-purple-300 rounded-xl transition-all"
-                                title="Export Single Certificate PDF"
-                              >
-                                <Award size={15} />
-                              </button>
-                              <button
-                                onClick={() => openEditModal(row)}
-                                className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-xl transition-all"
-                                title="Edit Attendee"
-                              >
-                                <Pencil size={15} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteAttendee(row)}
-                                className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500/50 text-slate-300 hover:text-red-400 rounded-xl transition-all"
-                                title="Delete Attendee"
-                              >
-                                <Trash2 size={15} />
-                              </button>
+                        </th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Attendee</th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Contact & ID</th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Check-in 1</th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Token</th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Gift</th>
+                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50">
+                      {filtered.map(row => (
+                        <tr key={row.id} className="hover:bg-slate-800/30 transition-colors group">
+                          <td className="p-6 w-12 text-center">
+                            <input 
+                              type="checkbox" 
+                              checked={selectedIds.includes(row.id)} 
+                              onChange={() => toggleSelect(row.id)} 
+                              className="w-4 h-4 accent-purple-500 rounded cursor-pointer" 
+                            />
+                          </td>
+                          <td className="p-6">
+                            <div className="flex items-center gap-4">
+                              <img src={row.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.full_name)}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-950 object-cover bg-slate-800" />
+                              <div>
+                                  <span className="text-sm font-black text-white uppercase tracking-tight block">{row.full_name}</span>
+                                  {row.reference && <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest mt-1 block">Ref: {row.reference}</span>}
+                              </div>
                             </div>
                           </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <td className="p-6">
+                            <div className="space-y-1">
+                              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{row.student_id}</p>
+                              {row.phone && <p className="text-[10px] font-bold text-green-400 uppercase tracking-wider">{row.phone}</p>}
+                              <p className="text-xs font-medium text-slate-400 lowercase">{row.email}</p>
+                            </div>
+                          </td>
+                          <td className="p-6 text-center">
+                            <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.checked_in_1 ? 'bg-green-500 shadow-green-500/40' : 'bg-slate-800'}`}></div>
+                          </td>
+                          <td className="p-6 text-center">
+                            <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.token_given ? 'bg-purple-500 shadow-purple-500/40' : 'bg-slate-800'}`}></div>
+                          </td>
+                          <td className="p-6 text-center">
+                            <div className={`mx-auto w-3 h-3 rounded-full shadow-lg ${row.checked_in_2 ? 'bg-blue-500 shadow-blue-500/40' : 'bg-slate-800'}`}></div>
+                          </td>
+                          <td className="p-6 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setViewingAttendee(row)}
+                                className="p-2 bg-slate-950 border border-slate-800 hover:border-purple-500/50 text-purple-400 hover:text-purple-300 rounded-xl transition-all"
+                                title="View Attendee Profile & Form Responses"
+                              >
+                                <Eye size={15} />
+                              </button>
+
+                              {isAdmin && (
+                                <>
+                                  <button
+                                    onClick={() => openEditModal(row)}
+                                    className="p-2 bg-slate-950 border border-slate-800 hover:border-blue-500/50 text-slate-300 hover:text-blue-400 rounded-xl transition-all"
+                                    title="Edit Attendee"
+                                  >
+                                    <Pencil size={15} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteAttendee(row)}
+                                    className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500/50 text-slate-300 hover:text-red-400 rounded-xl transition-all"
+                                    title="Delete Attendee"
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
         {!loading && filtered.length === 0 && <div className="text-center py-20 opacity-20 italic font-black uppercase text-xs tracking-[0.5em]">No attendees found</div>}
       </main>
 
-      {/* MANUAL REGISTRATION MODAL */}
-      {showAdd && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300 italic">
-            <form onSubmit={handleManualAdd} className="relative bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 w-full max-w-md space-y-6 shadow-2xl text-left italic">
-                <div className="flex justify-between items-center italic"><h2 className="text-3xl font-black italic text-white tracking-tighter uppercase leading-none italic">Manual Registration</h2><X className="text-slate-500 cursor-pointer hover:text-white transition-colors italic" onClick={() => setShowAdd(false)} /></div>
-                <div className="space-y-4 italic">
-                    <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="FULL NAME" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
-                    <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="EMAIL ADDRESS" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
-                    <input value={form.sid} onChange={e => setForm({...form, sid: e.target.value})} placeholder="STUDENT ID" required className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
-                    <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="PHONE NUMBER" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
-                    <input value={form.ref} onChange={e => setForm({...form, ref: e.target.value})} placeholder="REFERENCE (OPTIONAL)" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
-                    <input value={form.img} onChange={e => setForm({...form, img: e.target.value})} placeholder="IMAGE URL" className="w-full bg-slate-950 border border-slate-800 p-5 rounded-2xl text-sm font-bold text-white outline-none focus:ring-1 focus:ring-green-500/50 shadow-inner italic uppercase tracking-widest" />
+      {/* VIEW ATTENDEE PROFILE MODAL WITH PASS & CERTIFICATE EXPORT BUTTONS */}
+      {viewingAttendee && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-xl animate-in zoom-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 w-full max-w-lg space-y-6 shadow-2xl text-left">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <img src={viewingAttendee.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(viewingAttendee.full_name)}&background=0f172a&color=fff`} className="w-12 h-12 rounded-2xl border border-slate-800 object-cover" />
+                <div>
+                  <h3 className="text-base font-bold text-white uppercase">{viewingAttendee.full_name}</h3>
+                  <span className="text-xs font-mono text-purple-400">{viewingAttendee.student_id}</span>
                 </div>
-                <button className="w-full py-5 bg-green-500 text-slate-950 font-black rounded-2xl uppercase tracking-widest shadow-xl shadow-green-500/20 active:scale-95 transition-all border-b-4 border-green-700 italic">CONFIRM ATTENDEE</button>
-            </form>
+              </div>
+              <X className="text-slate-500 cursor-pointer hover:text-white" onClick={() => setViewingAttendee(null)} />
+            </div>
+
+            <div className="space-y-4 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block">Email</span>
+                  <span className="text-slate-200 font-bold">{viewingAttendee.email || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block">Phone</span>
+                  <span className="text-slate-200 font-bold">{viewingAttendee.phone || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block">Reference</span>
+                  <span className="text-emerald-400 font-bold">{viewingAttendee.reference || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 uppercase block">Category</span>
+                  <span className="text-purple-400 font-bold">{viewingAttendee.category || 'Participant'}</span>
+                </div>
+              </div>
+
+              {/* CUSTOM RESPONSES DISPLAY */}
+              {viewingAttendee.custom_responses && Object.keys(viewingAttendee.custom_responses).length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Custom Form Responses</span>
+                  <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-2 max-h-40 overflow-y-auto">
+                    {Object.entries(viewingAttendee.custom_responses).map(([k, v]) => (
+                      <div key={k} className="flex justify-between items-center text-[11px] border-b border-slate-900 pb-1">
+                        <span className="text-slate-400 font-medium">{k}:</span>
+                        <span className="text-white font-bold">{String(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* DOCUMENT EXPORT BUTTONS INSIDE VIEW MODAL */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <button
+                onClick={() => generateConfirmationPDF(viewingAttendee, event?.title)}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <FileText size={15} />
+                <span>Export Pass PDF</span>
+              </button>
+
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setSelectedIds([viewingAttendee.id]);
+                    setShowCertModal(true);
+                    setViewingAttendee(null);
+                  }}
+                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  <Award size={15} />
+                  <span>Export Certificate PDF</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setViewingAttendee(null)}
+                className="py-3 px-4 bg-slate-950 border border-slate-800 text-slate-300 rounded-xl text-xs font-semibold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* UNIFIED ADD ATTENDEE / ON-SPOT REGISTRATION MODAL */}
+      <AddAttendeeModal
+        isOpen={showAdd}
+        onClose={() => setShowAdd(false)}
+        event={event}
+        onAttendeeAdded={() => fetchAttendees()}
+        isOnSpotDefault={false}
+      />
 
       {/* EDIT ATTENDEE MODAL */}
       {editingAttendee && (
@@ -456,6 +548,16 @@ const GuestListPortal = ({ userRole }) => {
       <CertificateGeneratorModal
         isOpen={showCertModal}
         onClose={() => setShowCertModal(false)}
+        eventId={eventId}
+        eventTitle={event?.title || 'Event'}
+        attendees={attendees}
+        selectedIds={selectedIds}
+      />
+
+      {/* PASS BATCH GENERATOR MODAL */}
+      <PassGeneratorModal
+        isOpen={showPassModal}
+        onClose={() => setShowPassModal(false)}
         eventId={eventId}
         eventTitle={event?.title || 'Event'}
         attendees={attendees}

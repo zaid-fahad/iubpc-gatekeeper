@@ -32,13 +32,11 @@ const loadImage = (url) => {
   return new Promise((resolve, reject) => {
     if (!url) return reject(new Error('No image URL provided'));
     const img = new Image();
-    // Only set crossOrigin for remote http(s) URLs, never for data: URLs
     if (url.startsWith('http://') || url.startsWith('https://')) {
       img.crossOrigin = 'anonymous';
     }
     img.onload = () => resolve(img);
     img.onerror = () => {
-      // Retry without crossOrigin header as fallback
       const imgFallback = new Image();
       imgFallback.onload = () => resolve(imgFallback);
       imgFallback.onerror = (e) => reject(e);
@@ -49,21 +47,13 @@ const loadImage = (url) => {
 };
 
 /**
- * Render single certificate as a jsPDF Document instance
+ * Render single certificate page onto a jsPDF document
  */
-export const generateCertificatePDF = async ({ template, attendee, event, certNumber }) => {
-  const orientation = template?.orientation || 'landscape';
-  const doc = new jsPDF({
-    orientation: orientation,
-    unit: 'px',
-    format: [template?.canvas_width || 1920, template?.canvas_height || 1080],
-    compress: true
-  });
-
+export const renderCertificateOnDoc = async (doc, { template, attendee, event, certNumber }) => {
   const width = template?.canvas_width || 1920;
   const height = template?.canvas_height || 1080;
 
-  // 1. Draw Background Image with PNG/JPEG Fallback
+  // 1. Draw Background Image
   if (template?.background_image_url) {
     try {
       const bgImg = await loadImage(template.background_image_url);
@@ -90,7 +80,7 @@ export const generateCertificatePDF = async ({ template, attendee, event, certNu
   // 2. Generate Verification QR Code
   const qrDataUrl = await generateVerificationQRCode(certNumber);
 
-  // 3. Render Placeholder Elements
+  // 3. Render Elements
   const elements = template?.elements || [];
 
   for (const el of elements) {
@@ -106,7 +96,6 @@ export const generateCertificatePDF = async ({ template, attendee, event, certNu
       continue;
     }
 
-    // Resolve text value
     let text = '';
     switch (el.field) {
       case 'participant_name':
@@ -136,11 +125,9 @@ export const generateCertificatePDF = async ({ template, attendee, event, certNu
 
     if (!text) continue;
 
-    // Apply Typography
     const fontSize = el.fontSize || 36;
     doc.setFontSize(fontSize);
 
-    // Font family mapping
     let fontName = 'helvetica';
     if (el.fontFamily === 'Times') fontName = 'times';
     if (el.fontFamily === 'Courier') fontName = 'courier';
@@ -156,18 +143,66 @@ export const generateCertificatePDF = async ({ template, attendee, event, certNu
       doc.setFont('helvetica', 'normal');
     }
 
-    // Convert hex color to RGB
     const hex = el.color || '#000000';
     const r = parseInt(hex.substring(1, 3), 16) || 0;
     const g = parseInt(hex.substring(3, 5), 16) || 0;
     const b = parseInt(hex.substring(5, 7), 16) || 0;
     doc.setTextColor(r, g, b);
 
-    // Add font ascender offset (+ 0.18 * fontSize) to shift PDF text down to align cap-height top 1:1 with HTML CSS top
     const alignOption = el.align || 'left';
     const adjustedPosY = posY + (fontSize * 0.18);
     doc.text(text, posX, adjustedPosY, { align: alignOption, baseline: 'top' });
   }
+};
 
+/**
+ * Render single certificate as a jsPDF Document instance
+ */
+export const generateCertificatePDF = async ({ template, attendee, event, certNumber }) => {
+  const orientation = template?.orientation || 'landscape';
+  const width = template?.canvas_width || 1920;
+  const height = template?.canvas_height || 1080;
+
+  const doc = new jsPDF({
+    orientation: orientation,
+    unit: 'px',
+    format: [width, height],
+    compress: true
+  });
+
+  await renderCertificateOnDoc(doc, { template, attendee, event, certNumber });
   return doc;
+};
+
+/**
+ * Generates a multi-page PDF document containing all attendee certificates
+ */
+export const generateBatchCertificatesPDF = async ({ template, targetAttendees = [], certRecords = [], eventTitle = 'Event' }) => {
+  const orientation = template?.orientation || 'landscape';
+  const width = template?.canvas_width || 1920;
+  const height = template?.canvas_height || 1080;
+
+  const doc = new jsPDF({
+    orientation: orientation,
+    unit: 'px',
+    format: [width, height],
+    compress: true
+  });
+
+  for (let i = 0; i < targetAttendees.length; i++) {
+    if (i > 0) doc.addPage([width, height], orientation);
+    const attendee = targetAttendees[i];
+    const cert = certRecords.find(c => c.attendee_id === attendee.id);
+    const certNum = cert?.certificate_number || `CERT-2026-${i + 1}`;
+
+    await renderCertificateOnDoc(doc, {
+      template,
+      attendee,
+      event: { title: eventTitle },
+      certNumber: certNum
+    });
+  }
+
+  const filename = `${(eventTitle || 'Event').replace(/[^a-zA-Z0-9]/g, '_')}_Certificates_Batch.pdf`;
+  doc.save(filename);
 };

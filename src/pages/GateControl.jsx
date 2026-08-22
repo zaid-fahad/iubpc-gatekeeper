@@ -8,7 +8,7 @@ import {
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee, updateAttendee, deleteAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
-import { GateActionButton, LoadingSpinner, StatCard } from '../components';
+import { GateActionButton, LoadingSpinner, StatCard, AddAttendeeModal } from '../components';
 import { supabase } from '../lib/supabase';
 
 const GateControl = ({ userRole }) => {
@@ -743,128 +743,19 @@ const GateControl = ({ userRole }) => {
         </div>
       )}
 
-      {/* ON-SPOT REGISTRATION MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <UserPlus size={18} className="text-purple-400" />
-                <h3 className="text-base font-bold text-white">On-Spot Registration</h3>
-              </div>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {addError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl">
-                {addError}
-              </div>
-            )}
-
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: false }))}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${!addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Student
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: true }))}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Guest / Visitor
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-300 font-medium">Full Name *</label>
-                  <input
-                    type="text"
-                    value={addForm.name}
-                    onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter full name..."
-                    required
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                {!addForm.isGuest && (
-                  <div>
-                    <label className="text-slate-300 font-medium">Student ID *</label>
-                    <input
-                      type="text"
-                      value={addForm.sid}
-                      onChange={e => setAddForm(prev => ({ ...prev, sid: e.target.value }))}
-                      placeholder="e.g. 2020101"
-                      required
-                      className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-slate-300 font-medium">{addForm.isGuest ? 'Reference Person / Host *' : 'Reference Person / Host (Optional)'}</label>
-                  <input
-                    type="text"
-                    value={addForm.ref}
-                    onChange={e => setAddForm(prev => ({ ...prev, ref: e.target.value }))}
-                    placeholder="e.g. Dr. Rahman (Faculty Host)"
-                    required={addForm.isGuest}
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-300 font-medium">Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={addForm.email}
-                    onChange={e => setAddForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@example.com"
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-300 font-medium">Phone (Optional)</label>
-                  <input
-                    type="text"
-                    value={addForm.phone}
-                    onChange={e => setAddForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Phone number..."
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all min-h-[44px]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
-                >
-                  Register On-Spot
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* SHARED ON-SPOT REGISTRATION MODAL */}
+      <AddAttendeeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        event={event}
+        onAttendeeAdded={(newAtt) => {
+          fetchAttendees();
+          if (newAtt) {
+            setPendingAttendee(newAtt);
+          }
+        }}
+        isOnSpotDefault={true}
+      />
 
       {/* INSTANT CHECK-IN PROMPT MODAL */}
       {showPromptModal && pendingAttendee && (

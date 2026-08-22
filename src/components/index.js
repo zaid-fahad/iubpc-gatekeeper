@@ -5,3 +5,7 @@ export { default as LoadingSpinner } from './LoadingSpinner';
 export { ProtectedRoute } from './ProtectedRoute';
 export { default as StatCard } from './StatCard';
 export { default as CertificateGeneratorModal } from './CertificateGeneratorModal';
+export { default as PassGeneratorModal } from './PassGeneratorModal';
+export { default as AddAttendeeModal } from './AddAttendeeModal';
+export { default as CsvFieldMapperModal } from './CsvFieldMapperModal';
+export { default as Footer } from './Footer';

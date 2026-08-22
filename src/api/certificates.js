@@ -1,9 +1,13 @@
 import { supabase } from './client';
 
 /**
- * Certificate Management & Verification Service
- * Supports Supabase database with persistent LocalStorage schema caching to suppress 404 console errors
+ * Helper to validate UUID string syntax for PostgreSQL compatibility
  */
+const isValidUuid = (id) => {
+  if (!id || typeof id !== 'string') return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
 let isTemplateTableMissing = localStorage.getItem('iubpc_schema_missing_cert_templates') === 'true';
 let isCertificatesTableMissing = localStorage.getItem('iubpc_schema_missing_certificates') === 'true';
 
@@ -32,9 +36,11 @@ export const certificateService = {
    * Fetch certificate template for a specific event
    */
   fetchTemplateByEvent: async (eventId) => {
-    if (isTemplateTableMissing) {
-      const local = localStorage.getItem(`iubpc_cert_tmpl_${eventId}`);
-      return { data: local ? JSON.parse(local) : null, error: null };
+    const local = localStorage.getItem(`iubpc_cert_tmpl_${eventId}`);
+    const localData = local ? JSON.parse(local) : null;
+
+    if (isTemplateTableMissing || !isValidUuid(eventId)) {
+      return { data: localData, error: null };
     }
 
     try {
@@ -46,20 +52,17 @@ export const certificateService = {
 
       if (error) {
         markTemplateMissing();
-        const local = localStorage.getItem(`iubpc_cert_tmpl_${eventId}`);
-        return { data: local ? JSON.parse(local) : null, error: null };
+        return { data: localData, error: null };
       }
 
-      if (!data) {
-        const local = localStorage.getItem(`iubpc_cert_tmpl_${eventId}`);
-        if (local) return { data: JSON.parse(local), error: null };
+      if (!data && localData) {
+        return { data: localData, error: null };
       }
 
       return { data, error: null };
     } catch (err) {
       markTemplateMissing();
-      const local = localStorage.getItem(`iubpc_cert_tmpl_${eventId}`);
-      return { data: local ? JSON.parse(local) : null, error: null };
+      return { data: localData, error: null };
     }
   },
 
@@ -76,7 +79,7 @@ export const certificateService = {
       ...payload
     }));
 
-    if (isTemplateTableMissing) {
+    if (isTemplateTableMissing || !isValidUuid(event_id)) {
       return { 
         data: { id: id || `local_${event_id}`, event_id, ...payload }, 
         error: null 
@@ -100,7 +103,7 @@ export const certificateService = {
 
       const targetId = id || existing?.id;
 
-      if (targetId) {
+      if (targetId && isValidUuid(targetId)) {
         const { data, error } = await supabase
           .from('certificate_templates')
           .update({
@@ -206,7 +209,7 @@ export const certificateService = {
 
     localStorage.setItem(localCertKey, JSON.stringify(newCertData));
 
-    if (!isCertificatesTableMissing) {
+    if (!isCertificatesTableMissing && isValidUuid(eventId) && isValidUuid(attendeeId)) {
       try {
         const { data: existing, error: fetchErr } = await supabase
           .from('certificates')
@@ -326,8 +329,8 @@ export const certificateService = {
     if (!certObj.event || !certObj.attendee) {
       try {
         const [{ data: eventData }, { data: attendees }] = await Promise.all([
-          supabase.from('events').select('*').eq('id', certObj.event_id).maybeSingle(),
-          supabase.from('attendees').select('*').eq('event_id', certObj.event_id)
+          isValidUuid(certObj.event_id) ? supabase.from('events').select('*').eq('id', certObj.event_id).maybeSingle() : { data: null },
+          isValidUuid(certObj.event_id) ? supabase.from('attendees').select('*').eq('event_id', certObj.event_id) : { data: [] }
         ]);
 
         if (!certObj.event) {
@@ -350,7 +353,7 @@ export const certificateService = {
    * Fetch all certificates for an event
    */
   fetchCertificatesByEvent: async (eventId) => {
-    if (isCertificatesTableMissing) return { data: [], error: null };
+    if (isCertificatesTableMissing || !isValidUuid(eventId)) return { data: [], error: null };
     try {
       const { data, error } = await supabase
         .from('certificates')

@@ -5,7 +5,8 @@ import AppLayout from '../layouts/AppLayout';
 import { 
   AuthScreen, DashboardOverview, EventRegistry, OperatorManifest, 
   GateControl, GuestListPortal, EventAnalytics, SelfEntryKiosk,
-  CertificateDesigner, PublicCertificateVerification, CertificatesModule
+  CertificateDesigner, PublicCertificateVerification, CertificatesModule,
+  CreateEditEventPage, PublicEventRegistrationPage
 } from '../pages';
 
 const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
@@ -20,7 +21,7 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-green-500/30 selection:text-slate-950 italic">
       <Suspense fallback={<LoadingSpinner />}>
         <Routes>
-          {/* Public Authentication & Certificate Verification Routes */}
+          {/* Public Authentication, Public Registration & Certificate Verification Routes */}
           <Route 
             path="/login" 
             element={
@@ -44,6 +45,10 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
             path="/certificate/:certificateNumber" 
             element={<PublicCertificateVerification />} 
           />
+          <Route 
+            path="/register/:eventId" 
+            element={<PublicEventRegistrationPage />} 
+          />
 
           {/* Protected Main App Multi-Page Routes Wrapped in Layout */}
           <Route 
@@ -55,6 +60,8 @@ const AppRoutes = ({ user, isAdmin, isVolunteer, isActive, loading }) => {
           >
             <Route path="/" element={<DashboardOverview userRole={userRole} />} />
             <Route path="/events" element={<EventRegistry userRole={userRole} />} />
+            <Route path="/events/new" element={<CreateEditEventPage />} />
+            <Route path="/events/:id/edit" element={<CreateEditEventPage />} />
             <Route 
               path="/certificates" 
               element={

@@ -169,15 +169,55 @@ export const attendeeService = {
   },
 
   /**
-   * Bulk insert attendees from CSV import
+   * Bulk insert attendees from CSV import with automatic deduplication
    */
   bulkInsertAttendees: async (attendeesData) => {
+    if (!attendeesData || attendeesData.length === 0) {
+      return { data: [], skippedCount: 0, error: null };
+    }
+
+    const eventId = attendeesData[0]?.event_id;
+    let existingIdSet = new Set();
+    let existingNameSet = new Set();
+
+    if (eventId) {
+      const { data: existing } = await attendeeService.fetchEventAttendees(eventId);
+      existingIdSet = new Set((existing || []).map(a => (a.student_id || '').toLowerCase().trim()).filter(Boolean));
+      existingNameSet = new Set((existing || []).map(a => (a.full_name || '').toLowerCase().trim()).filter(Boolean));
+    }
+
     const createdList = [];
+    let skippedCount = 0;
+
     for (const att of attendeesData) {
-      const { data } = await attendeeService.insertAttendee(att);
+      const rawName = (att.full_name || '').trim();
+      const normName = rawName.toLowerCase();
+
+      const rawId = (att.student_id || '').trim();
+      const fallbackId = `GUEST-${normName.replace(/[^a-z0-9]/g, '')}`;
+      const finalId = rawId || fallbackId;
+      const normId = finalId.toLowerCase();
+
+      // Check for duplication against existing attendees and in-flight batch
+      if (existingIdSet.has(normId) || existingNameSet.has(normName)) {
+        skippedCount++;
+        continue;
+      }
+
+      existingIdSet.add(normId);
+      existingNameSet.add(normName);
+
+      const sanitizedAttendee = {
+        ...att,
+        full_name: rawName,
+        student_id: finalId
+      };
+
+      const { data } = await attendeeService.insertAttendee(sanitizedAttendee);
       if (data) createdList.push(data);
     }
-    return { data: createdList, error: null };
+
+    return { data: createdList, skippedCount, error: null };
   },
 
   /**
@@ -296,3 +336,105 @@ export const deleteAttendee = attendeeService.deleteAttendee;
 export const insertEntryLog = logService.insertEntryLog;
 export const fetchEventLogs = logService.fetchEventLogs;
 export const fetchAttendeeLogs = logService.fetchAttendeeLogs;
+
+/**
+ * Fetch and import Google Sheet CSV live responses with deduplication against existing attendees
+ */
+export const syncGoogleSheetResponses = async (eventId, csvUrl, customMapping = null) => {
+  try {
+    const res = await fetch(csvUrl);
+    const text = await res.text();
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+    if (lines.length <= 1) {
+      return { data: { count: 0, skippedCount: 0 }, error: null };
+    }
+
+    const headers = lines[0].split(',').map(h => h.replace(/^"(.*)"$/, '$1').trim());
+    
+    // Auto-detect or use customMapping
+    let nameCol = customMapping?.full_name;
+    let idCol = customMapping?.student_id;
+    let emailCol = customMapping?.email;
+    let phoneCol = customMapping?.phone;
+    let refCol = customMapping?.reference;
+
+    const lowerHeaders = headers.map(h => h.toLowerCase());
+    if (!nameCol) {
+      const idx = lowerHeaders.findIndex(h => h.includes('name'));
+      if (idx >= 0) nameCol = headers[idx];
+    }
+    if (!idCol) {
+      const idx = lowerHeaders.findIndex(h => h.includes('student') || h.includes('id') || h.includes('roll'));
+      if (idx >= 0) idCol = headers[idx];
+    }
+    if (!emailCol) {
+      const idx = lowerHeaders.findIndex(h => h.includes('email'));
+      if (idx >= 0) emailCol = headers[idx];
+    }
+    if (!phoneCol) {
+      const idx = lowerHeaders.findIndex(h => h.includes('phone') || h.includes('mobile'));
+      if (idx >= 0) phoneCol = headers[idx];
+    }
+    if (!refCol) {
+      const idx = lowerHeaders.findIndex(h => h.includes('reference') || h.includes('host') || h.includes('ref'));
+      if (idx >= 0) refCol = headers[idx];
+    }
+
+    // Fetch existing registered attendees to prevent duplicates
+    const { data: existingAttendees } = await attendeeService.fetchEventAttendees(eventId);
+    const existingIdSet = new Set((existingAttendees || []).map(a => (a.student_id || '').toLowerCase().trim()).filter(Boolean));
+    const existingNameSet = new Set((existingAttendees || []).map(a => (a.full_name || '').toLowerCase().trim()).filter(Boolean));
+
+    const attendeesToInsert = [];
+    let skippedCount = 0;
+
+    lines.slice(1).forEach((line, idx) => {
+      const cols = line.split(',').map(v => v.replace(/^"(.*)"$/, '$1').trim());
+      const rowObj = {};
+      headers.forEach((h, colIdx) => {
+        rowObj[h] = cols[colIdx] || '';
+      });
+
+      const rawName = rowObj[nameCol] || cols[0] || `Participant ${idx + 1}`;
+      const rawId = rowObj[idCol] || cols[1] || '';
+      const email = emailCol ? rowObj[emailCol] : null;
+      const phone = phoneCol ? rowObj[phoneCol] : null;
+      const reference = refCol ? rowObj[refCol] : 'Google Form Sync';
+
+      const normName = rawName.toLowerCase().trim();
+      const deterministicFallbackId = `GUEST-${normName.replace(/[^a-z0-9]/g, '')}`;
+      const finalStudentId = rawId.trim() || deterministicFallbackId;
+      const normId = finalStudentId.toLowerCase().trim();
+
+      // Skip duplicate if EITHER Student ID OR Full Name already exists for this event
+      if (existingIdSet.has(normId) || existingNameSet.has(normName)) {
+        skippedCount++;
+        return;
+      }
+
+      existingIdSet.add(normId);
+      existingNameSet.add(normName);
+
+      attendeesToInsert.push({
+        event_id: eventId,
+        full_name: rawName.trim(),
+        student_id: finalStudentId,
+        email: email || null,
+        phone: phone || null,
+        reference: reference || 'Google Form Sync',
+        category: 'Participant'
+      });
+    });
+
+    if (attendeesToInsert.length > 0) {
+      const { data, error } = await bulkInsertAttendees(attendeesToInsert);
+      if (error) throw error;
+    }
+
+    return { data: { count: attendeesToInsert.length, skippedCount }, error: null };
+  } catch (err) {
+    console.error('syncGoogleSheetResponses error:', err);
+    return { data: null, error: err };
+  }
+};

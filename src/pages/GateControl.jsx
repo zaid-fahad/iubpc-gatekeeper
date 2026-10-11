@@ -8,7 +8,7 @@ import {
 import { fetchEventById } from '../api/events';
 import { fetchEventAttendees, updateAttendeeStatus, insertEntryLog, fetchEventLogs, fetchAttendeeLogs, insertAttendee, updateAttendee, deleteAttendee } from '../api/attendees';
 import { getSession } from '../api/auth';
-import { GateActionButton, LoadingSpinner, StatCard } from '../components';
+import { GateActionButton, LoadingSpinner, StatCard, AddAttendeeModal } from '../components';
 import { supabase } from '../lib/supabase';
 
 const GateControl = ({ userRole }) => {
@@ -550,9 +550,9 @@ const GateControl = ({ userRole }) => {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Total Registered" value={stats.total} color="bg-slate-950/60" char="R" />
+              <StatCard label="Total Registered" value={stats.total} color="bg-blue-500/10 border-blue-500/20" char="R" />
               <StatCard label="Checked In" value={stats.checkedIn} color="bg-green-500/10 border-green-500/20" char="C" />
-              <StatCard label="Remaining" value={stats.remaining} color="bg-slate-950/60" char="P" />
+              <StatCard label="Remaining" value={stats.remaining} color="bg-amber-500/10 border-amber-500/20" char="P" />
               <StatCard label="On-Spot Reg" value={stats.onSpot} color="bg-purple-500/10 border-purple-500/20" char="S" />
             </div>
 
@@ -607,7 +607,7 @@ const GateControl = ({ userRole }) => {
           <div className="w-full max-w-5xl mx-auto bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom duration-300">
             
             {/* DRAWER TOP BAR WITH CLOSE BUTTON & ADMIN ACTIONS */}
-            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-950/50">
+            <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
                 <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">Attendee Check-In Management</h3>
@@ -616,16 +616,18 @@ const GateControl = ({ userRole }) => {
                 {isAdmin && (
                   <>
                     <button
+                      type="button"
                       onClick={openEditAttendeeModal}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-blue-600/20 text-slate-300 hover:text-blue-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      className="p-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 transition-colors flex items-center gap-1.5 text-xs font-semibold"
                       title="Edit Attendee Info"
                     >
                       <Pencil size={15} />
                       <span className="hidden sm:inline">Edit</span>
                     </button>
                     <button
+                      type="button"
                       onClick={handleDeleteAttendee}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-red-600/20 text-slate-300 hover:text-red-400 border border-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                      className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 transition-colors flex items-center gap-1.5 text-xs font-semibold"
                       title="Delete Attendee"
                     >
                       <Trash2 size={15} />
@@ -634,6 +636,7 @@ const GateControl = ({ userRole }) => {
                   </>
                 )}
                 <button 
+                  type="button"
                   onClick={() => setMember(null)}
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                   title="Close Drawer"
@@ -730,12 +733,14 @@ const GateControl = ({ userRole }) => {
             </div>
 
             {/* STICKY FOOTER */}
-            <div className="p-4 border-t border-slate-800 bg-slate-950/80 shrink-0">
+            <div className="p-4 border-t border-slate-800 bg-slate-900 shrink-0">
               <button
+                type="button"
                 onClick={() => setMember(null)}
-                className="w-full py-3 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
+                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all min-h-[44px] shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2"
               >
-                Done & Close Drawer
+                <CheckCircle2 size={16} />
+                <span>Done & Close Drawer</span>
               </button>
             </div>
 
@@ -743,128 +748,19 @@ const GateControl = ({ userRole }) => {
         </div>
       )}
 
-      {/* ON-SPOT REGISTRATION MODAL */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <UserPlus size={18} className="text-purple-400" />
-                <h3 className="text-base font-bold text-white">On-Spot Registration</h3>
-              </div>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {addError && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl">
-                {addError}
-              </div>
-            )}
-
-            <form onSubmit={handleAddSubmit} className="space-y-4">
-              <div className="flex items-center justify-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: false }))}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${!addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Student
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddForm(prev => ({ ...prev, isGuest: true }))}
-                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-medium transition-all ${addForm.isGuest ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
-                >
-                  Guest / Visitor
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="text-slate-300 font-medium">Full Name *</label>
-                  <input
-                    type="text"
-                    value={addForm.name}
-                    onChange={e => setAddForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter full name..."
-                    required
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                {!addForm.isGuest && (
-                  <div>
-                    <label className="text-slate-300 font-medium">Student ID *</label>
-                    <input
-                      type="text"
-                      value={addForm.sid}
-                      onChange={e => setAddForm(prev => ({ ...prev, sid: e.target.value }))}
-                      placeholder="e.g. 2020101"
-                      required
-                      className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-slate-300 font-medium">{addForm.isGuest ? 'Reference Person / Host *' : 'Reference Person / Host (Optional)'}</label>
-                  <input
-                    type="text"
-                    value={addForm.ref}
-                    onChange={e => setAddForm(prev => ({ ...prev, ref: e.target.value }))}
-                    placeholder="e.g. Dr. Rahman (Faculty Host)"
-                    required={addForm.isGuest}
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-300 font-medium">Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={addForm.email}
-                    onChange={e => setAddForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@example.com"
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-slate-300 font-medium">Phone (Optional)</label>
-                  <input
-                    type="text"
-                    value={addForm.phone}
-                    onChange={e => setAddForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Phone number..."
-                    className="w-full mt-1 bg-slate-950 border border-slate-800 p-3 rounded-xl text-white font-mono outline-none focus:border-purple-500 min-h-[44px]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-3 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-xl text-xs font-medium transition-all min-h-[44px]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition-all min-h-[44px]"
-                >
-                  Register On-Spot
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* SHARED ON-SPOT REGISTRATION MODAL */}
+      <AddAttendeeModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        event={event}
+        onAttendeeAdded={(newAtt) => {
+          fetchAttendees();
+          if (newAtt) {
+            setPendingAttendee(newAtt);
+          }
+        }}
+        isOnSpotDefault={true}
+      />
 
       {/* INSTANT CHECK-IN PROMPT MODAL */}
       {showPromptModal && pendingAttendee && (

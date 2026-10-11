@@ -2,12 +2,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { getSession, checkAdminStatus, onAuthStateChange } from './api/auth';
 import { AppRoutes } from './routes';
+import { applyPortalSettings } from './utils/portalSettings';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'admin' or 'volunteer'
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Apply saved theme settings on mount & listen for live setting changes
+  useEffect(() => {
+    applyPortalSettings();
+    const handleSettingsChange = () => {
+      applyPortalSettings();
+    };
+    window.addEventListener('portal_settings_changed', handleSettingsChange);
+    return () => {
+      window.removeEventListener('portal_settings_changed', handleSettingsChange);
+    };
+  }, []);
 
   // Memoize admin check to prevent unnecessary re-runs
   const verifyUserRole = useCallback(async (email) => {

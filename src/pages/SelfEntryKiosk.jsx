@@ -188,15 +188,14 @@ const SelfEntryKiosk = () => {
       });
 
       const { data, error } = await Promise.race([insertPromise, timeoutPromise]);
+      const newMember = Array.isArray(data) ? data[0] : data;
 
-      if (error || !data || !data[0]) {
+      if (error || !newMember) {
         console.error("On-Spot Reg Error:", error);
         setOnSpotError(error?.message || 'Registration failed. Please check with gate staff.');
         setSubmittingOnSpot(false);
         return;
       }
-
-      const newMember = data[0];
 
       // Non-blocking entry log insertion
       insertEntryLog({

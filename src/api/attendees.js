@@ -14,7 +14,7 @@ const isValidUuid = (id) => {
  */
 export const attendeeService = {
   /**
-   * Fetch all registered attendees for an event (merging remote & local records)
+   * Fetch all registered attendees for an event (merging remote & local records, auto-syncing unsaved locals)
    */
   fetchEventAttendees: async (eventId) => {
     let remoteList = [];
@@ -41,6 +41,52 @@ export const attendeeService = {
           const item = JSON.parse(localStorage.getItem(key));
           if (item && item.id) localAttendees.push(item);
         } catch {}
+      }
+    }
+
+    // Auto-sync unsaved local attendees to Supabase if event is a valid remote UUID
+    if (isValidUuid(eventId) && remoteList.length >= 0) {
+      const remoteIdSet = new Set(remoteList.map(a => a.id));
+      const remoteStudentIdSet = new Set(remoteList.map(a => (a.student_id || '').toLowerCase().trim()));
+
+      const unsyncedLocals = localAttendees.filter(a => 
+        !remoteIdSet.has(a.id) && 
+        !remoteStudentIdSet.has((a.student_id || '').toLowerCase().trim())
+      );
+
+      if (unsyncedLocals.length > 0) {
+        Promise.all(unsyncedLocals.map(async (unsynced) => {
+          try {
+            const dbPayload = {
+              event_id: eventId,
+              full_name: unsynced.full_name || '',
+              student_id: unsynced.student_id || '',
+              email: unsynced.email || '',
+              phone: unsynced.phone || '',
+              reference: unsynced.reference || '',
+              category: unsynced.category || 'Participant',
+              avatar_url: unsynced.avatar_url || null,
+              additional_info: unsynced.additional_info || null,
+              is_on_spot: unsynced.is_on_spot ?? false,
+              checked_in_1: unsynced.checked_in_1 ?? false,
+              checked_in_2: unsynced.checked_in_2 ?? false,
+              token_given: unsynced.token_given ?? false
+            };
+
+            const { data, error } = await supabase.from('attendees').insert([dbPayload]).select().single();
+            if (!error && data) {
+              const oldKey = `iubpc_attendee_${eventId}_${unsynced.id}`;
+              localStorage.removeItem(oldKey);
+              localStorage.setItem(`iubpc_attendee_${eventId}_${data.id}`, JSON.stringify(data));
+              if (unsynced.custom_responses) {
+                localStorage.setItem(`iubpc_att_custom_${data.id}`, JSON.stringify(unsynced.custom_responses));
+              }
+              remoteList.push(data);
+            }
+          } catch (syncErr) {
+            console.warn('[Sync Error] Could not auto-sync local attendee to DB:', syncErr);
+          }
+        })).catch(() => {});
       }
     }
 
@@ -121,30 +167,51 @@ export const attendeeService = {
   },
 
   /**
-   * Insert a single attendee with zero data loss & payload sanitization
+   * Insert a single attendee with zero data loss, full DB payload & strict error reporting
    */
   insertAttendee: async (attendeeData) => {
+    const rawStudentId = (attendeeData.student_id || '').trim();
+    const rawFullName = (attendeeData.full_name || '').trim();
+
     const dbPayload = {
       event_id: isValidUuid(attendeeData.event_id) ? attendeeData.event_id : undefined,
-      full_name: attendeeData.full_name,
-      student_id: attendeeData.student_id,
-      email: attendeeData.email || '',
-      phone: attendeeData.phone || '',
+      full_name: rawFullName,
+      student_id: rawStudentId,
+      email: attendeeData.email ? attendeeData.email.trim() : '',
+      phone: attendeeData.phone ? attendeeData.phone.trim() : '',
+      reference: attendeeData.reference ? attendeeData.reference.trim() : '',
       category: attendeeData.category || 'Participant',
-      reference: attendeeData.reference || ''
+      avatar_url: attendeeData.avatar_url || null,
+      additional_info: attendeeData.additional_info || null,
+      is_on_spot: attendeeData.is_on_spot ?? false,
+      checked_in_1: attendeeData.checked_in_1 ?? false,
+      checked_in_2: attendeeData.checked_in_2 ?? false,
+      token_given: attendeeData.token_given ?? false
     };
 
     let createdAttendee = null;
+    let insertError = null;
 
     if (isValidUuid(attendeeData.event_id)) {
       try {
         const { data, error } = await supabase.from('attendees').insert([dbPayload]).select().single();
-        if (!error && data) createdAttendee = data;
+        if (error) {
+          console.error('[insertAttendee] Supabase insert failed:', error);
+          insertError = error;
+        } else if (data) {
+          createdAttendee = data;
+        }
       } catch (err) {
-        console.warn('Remote attendee insert error:', err);
+        console.error('[insertAttendee] Exception during Supabase insert:', err);
+        insertError = err;
       }
     }
 
+    if (insertError) {
+      return { data: null, error: insertError };
+    }
+
+    // Offline / Local-only fallback (only when event_id is not a remote UUID)
     if (!createdAttendee) {
       const generatedUuid = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 

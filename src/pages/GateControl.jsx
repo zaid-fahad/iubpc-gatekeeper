@@ -328,7 +328,7 @@ const GateControl = ({ userRole }) => {
     });
 
     if (!error && data) {
-      const newAttendee = data[0];
+      const newAttendee = Array.isArray(data) ? data[0] : data;
       setAttendees(prev => [newAttendee, ...prev]);
       setPendingAttendee(newAttendee);
       setShowAddModal(false);
